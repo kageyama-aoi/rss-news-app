@@ -1,7 +1,11 @@
 export default async function handler(req, res) {
 
+//  const rssUrl =
+//   "https://news.yahoo.co.jp/rss/topics/top-picks.xml"
+
  const rssUrl =
-  "https://news.yahoo.co.jp/rss/topics/top-picks.xml"
+  "https://note.com/kajiken0630/rss"
+
 
  const response = await fetch(rssUrl)
  const xml = await response.text()
