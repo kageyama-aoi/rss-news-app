@@ -209,25 +209,12 @@ export default function HomePage() {
         {savedError ? <p style={styles.error}>{savedError}</p> : null}
 
         <details open style={styles.panel}>
-          <summary style={styles.panelSummary}>
-            取得したニュース ({news.length})
-          </summary>
-          <div style={styles.panelBody}>
-            {renderGroupedFetchedNews(
-              groupedNews,
-              summaryLoadingMap,
-              saveLoadingMap,
-              summaryMap,
-              saveMessageMap,
-              summarizeTitle,
-              saveNews
-            )}
-          </div>
-        </details>
-
-        <details style={styles.panel}>
           <summary style={styles.panelSummary}>検索</summary>
           <div style={styles.panelBody}>
+            <p style={styles.helpText}>
+              保存済みニュースのタイトルを部分一致で検索します。本文や要約ではなく、
+              タイトル文字列に検索語が含まれるニュースがヒットします。
+            </p>
             <div style={styles.searchRow}>
               <input
                 type="text"
@@ -246,6 +233,23 @@ export default function HomePage() {
             </div>
             {searchError ? <p style={styles.error}>{searchError}</p> : null}
             {renderFlatArticleList(searchResults, "検索結果はまだありません。")}
+          </div>
+        </details>
+
+        <details open style={styles.panel}>
+          <summary style={styles.panelSummary}>
+            取得したニュース ({news.length})
+          </summary>
+          <div style={styles.panelBody}>
+            {renderGroupedFetchedNews(
+              groupedNews,
+              summaryLoadingMap,
+              saveLoadingMap,
+              summaryMap,
+              saveMessageMap,
+              summarizeTitle,
+              saveNews
+            )}
           </div>
         </details>
 
@@ -462,6 +466,13 @@ const styles = {
     gap: "12px",
     flexWrap: "wrap",
     marginBottom: "12px"
+  },
+  helpText: {
+    marginTop: 0,
+    marginBottom: "12px",
+    color: "#475569",
+    lineHeight: 1.6,
+    fontSize: "14px"
   },
   input: {
     minWidth: "260px",
