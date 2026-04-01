@@ -286,57 +286,61 @@ function renderGroupedFetchedNews(
   }
 
   return groups.map(([source, articles]) => (
-    <section key={source} style={styles.groupSection}>
-      <div style={styles.groupHeader}>
-        <h3 style={styles.groupHeading}>{source}</h3>
-        <span style={styles.groupCount}>{articles.length}件</span>
-      </div>
+    <details key={source} style={styles.groupSection} open>
+      <summary style={styles.groupSummary}>
+        <div style={styles.groupHeader}>
+          <h3 style={styles.groupHeading}>{source}</h3>
+          <span style={styles.groupCount}>{articles.length}件</span>
+        </div>
+      </summary>
 
-      <ul style={styles.compactList}>
-        {articles.map((article) => {
-          const key = `${article.source}-${article.link}`;
+      <div style={styles.groupBody}>
+        <ul style={styles.compactList}>
+          {articles.map((article) => {
+            const key = `${article.source}-${article.link}`;
 
-          return (
-            <li key={key} style={styles.compactItem}>
-              <div style={styles.itemMain}>
-                <div style={styles.metaRow}>
-                  <span style={styles.badge}>{article.source}</span>
-                  <span style={styles.metaText}>
-                    公開: {formatDateTime(article.publishedAt)}
-                  </span>
+            return (
+              <li key={key} style={styles.compactItem}>
+                <div style={styles.itemMain}>
+                  <div style={styles.metaRow}>
+                    <span style={styles.badge}>{article.source}</span>
+                    <span style={styles.metaText}>
+                      公開: {formatDateTime(article.publishedAt)}
+                    </span>
+                  </div>
+                  <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
+                    {article.title}
+                  </a>
+                  {summaryMap[key] ? (
+                    <p style={styles.summaryText}>{summaryMap[key]}</p>
+                  ) : null}
+                  {saveMessageMap[key] ? (
+                    <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
+                  ) : null}
                 </div>
-                <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-                  {article.title}
-                </a>
-                {summaryMap[key] ? (
-                  <p style={styles.summaryText}>{summaryMap[key]}</p>
-                ) : null}
-                {saveMessageMap[key] ? (
-                  <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
-                ) : null}
-              </div>
 
-              <div style={styles.itemActions}>
-                <button
-                  onClick={() => summarizeTitle(article)}
-                  style={styles.secondaryButton}
-                  disabled={summaryLoadingMap[key]}
-                >
-                  {summaryLoadingMap[key] ? "要約中..." : "AI要約"}
-                </button>
-                <button
-                  onClick={() => saveNews(article)}
-                  style={styles.secondaryButton}
-                  disabled={saveLoadingMap[key]}
-                >
-                  {saveLoadingMap[key] ? "保存中..." : "保存"}
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+                <div style={styles.itemActions}>
+                  <button
+                    onClick={() => summarizeTitle(article)}
+                    style={styles.secondaryButton}
+                    disabled={summaryLoadingMap[key]}
+                  >
+                    {summaryLoadingMap[key] ? "要約中..." : "AI要約"}
+                  </button>
+                  <button
+                    onClick={() => saveNews(article)}
+                    style={styles.secondaryButton}
+                    disabled={saveLoadingMap[key]}
+                  >
+                    {saveLoadingMap[key] ? "保存中..." : "保存"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </details>
   ));
 }
 
@@ -510,16 +514,25 @@ const styles = {
     color: "#dc2626"
   },
   groupSection: {
-    marginBottom: "18px"
+    marginBottom: "12px",
+    border: "1px solid #dbe4f0",
+    borderRadius: "10px",
+    backgroundColor: "#ffffff"
+  },
+  groupSummary: {
+    cursor: "pointer",
+    listStyle: "none",
+    padding: "10px 12px"
+  },
+  groupBody: {
+    padding: "0 12px 12px"
   },
   groupHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "12px",
-    marginBottom: "8px",
-    paddingBottom: "6px",
-    borderBottom: "2px solid #dbeafe"
+    marginBottom: 0
   },
   groupHeading: {
     margin: 0,
