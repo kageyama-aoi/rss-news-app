@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function HomePage() {
   const [news, setNews] = useState([]);
@@ -17,6 +17,9 @@ export default function HomePage() {
   const [summaryMap, setSummaryMap] = useState({});
   const [saveLoadingMap, setSaveLoadingMap] = useState({});
   const [saveMessageMap, setSaveMessageMap] = useState({});
+  const [fetchedAt, setFetchedAt] = useState(null);
+
+  const groupedNews = useMemo(() => groupBySource(news), [news]);
 
   const loadNews = async () => {
     setLoading(true);
@@ -31,6 +34,7 @@ export default function HomePage() {
 
       const data = await response.json();
       setNews(data);
+      setFetchedAt(new Date().toISOString());
     } catch (err) {
       setError(err.message || "不明なエラーが発生しました。");
     } finally {
@@ -176,99 +180,12 @@ export default function HomePage() {
     }
   };
 
-  const groupBySource = (items) => {
-    return items.reduce((groups, article) => {
-      const source = article.source || "その他";
-      if (!groups[source]) {
-        groups[source] = [];
-      }
-      groups[source].push(article);
-      return groups;
-    }, {});
-  };
-
-  const renderSavedArticleList = (items, emptyMessage) => {
-    if (items.length === 0) {
-      return <p style={styles.emptyText}>{emptyMessage}</p>;
-    }
-
-    return (
-      <ul style={styles.list}>
-        {items.map((article) => (
-          <li key={article.id || `${article.source}-${article.link}`} style={styles.listItem}>
-            <p style={styles.source}>{article.source}</p>
-            <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-              {article.title}
-            </a>
-            {article.summary ? (
-              <p style={styles.summaryText}>{article.summary}</p>
-            ) : (
-              <p style={styles.summaryEmpty}>要約はまだありません。</p>
-            )}
-          </li>
-        ))}
-      </ul>
-    );
-  };
-
-  const renderGroupedFetchedNews = () => {
-    if (news.length === 0) {
-      return <p style={styles.emptyText}>取得したニュースはまだありません。</p>;
-    }
-
-    const groupedNews = groupBySource(news);
-
-    return Object.entries(groupedNews).map(([source, articles]) => (
-      <section key={source} style={styles.groupSection}>
-        <h3 style={styles.groupHeading}>{source}</h3>
-        <ul style={styles.list}>
-          {articles.map((article) => {
-            const key = `${article.source}-${article.link}`;
-
-            return (
-              <li key={key} style={styles.listItem}>
-                <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-                  {article.title}
-                </a>
-
-                <div style={styles.actionRow}>
-                  <button
-                    onClick={() => summarizeTitle(article)}
-                    style={styles.secondaryButton}
-                    disabled={summaryLoadingMap[key]}
-                  >
-                    {summaryLoadingMap[key] ? "要約中..." : "AI要約"}
-                  </button>
-                  <button
-                    onClick={() => saveNews(article)}
-                    style={styles.secondaryButton}
-                    disabled={saveLoadingMap[key]}
-                  >
-                    {saveLoadingMap[key] ? "保存中..." : "保存"}
-                  </button>
-                </div>
-
-                {summaryMap[key] ? (
-                  <p style={styles.summaryText}>{summaryMap[key]}</p>
-                ) : null}
-
-                {saveMessageMap[key] ? (
-                  <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    ));
-  };
-
   return (
     <main style={styles.page}>
       <section style={styles.card}>
         <h1 style={styles.heading}>RSSニュースアプリ</h1>
         <p style={styles.description}>
-          RSSごとにニュースをまとめて表示し、AI要約、保存、検索まで確認できます。
+          RSSごとにニュースを見やすく整理し、公開日時、要約、保存、検索をまとめて扱えます。
         </p>
 
         <div style={styles.toolbar}>
@@ -284,37 +201,205 @@ export default function HomePage() {
           </button>
         </div>
 
+        {fetchedAt ? (
+          <p style={styles.infoText}>最終取得: {formatDateTime(fetchedAt)}</p>
+        ) : null}
+
         {error ? <p style={styles.error}>{error}</p> : null}
         {savedError ? <p style={styles.error}>{savedError}</p> : null}
 
-        <h2 style={styles.sectionHeading}>取得したニュース</h2>
-        {renderGroupedFetchedNews()}
+        <details open style={styles.panel}>
+          <summary style={styles.panelSummary}>
+            取得したニュース ({news.length})
+          </summary>
+          <div style={styles.panelBody}>
+            {renderGroupedFetchedNews(
+              groupedNews,
+              summaryLoadingMap,
+              saveLoadingMap,
+              summaryMap,
+              saveMessageMap,
+              summarizeTitle,
+              saveNews
+            )}
+          </div>
+        </details>
 
-        <h2 style={styles.sectionHeading}>検索</h2>
-        <div style={styles.searchRow}>
-          <input
-            type="text"
-            value={searchKeyword}
-            onChange={(event) => setSearchKeyword(event.target.value)}
-            placeholder="タイトル検索"
-            style={styles.input}
-          />
-          <button
-            onClick={searchSavedNews}
-            style={styles.secondaryButton}
-            disabled={searchLoading}
-          >
-            {searchLoading ? "検索中..." : "検索"}
-          </button>
-        </div>
-        {searchError ? <p style={styles.error}>{searchError}</p> : null}
-        {renderSavedArticleList(searchResults, "検索結果はまだありません。")}
+        <details style={styles.panel}>
+          <summary style={styles.panelSummary}>検索</summary>
+          <div style={styles.panelBody}>
+            <div style={styles.searchRow}>
+              <input
+                type="text"
+                value={searchKeyword}
+                onChange={(event) => setSearchKeyword(event.target.value)}
+                placeholder="タイトル検索"
+                style={styles.input}
+              />
+              <button
+                onClick={searchSavedNews}
+                style={styles.secondaryButton}
+                disabled={searchLoading}
+              >
+                {searchLoading ? "検索中..." : "検索"}
+              </button>
+            </div>
+            {searchError ? <p style={styles.error}>{searchError}</p> : null}
+            {renderFlatArticleList(searchResults, "検索結果はまだありません。")}
+          </div>
+        </details>
 
-        <h2 style={styles.sectionHeading}>保存済みニュース</h2>
-        {renderSavedArticleList(savedNews, "保存済みニュースはまだありません。")}
+        <details style={styles.panel}>
+          <summary style={styles.panelSummary}>
+            保存済みニュース ({savedNews.length})
+          </summary>
+          <div style={styles.panelBody}>
+            {renderFlatArticleList(
+              savedNews,
+              "保存済みニュースはまだありません。"
+            )}
+          </div>
+        </details>
       </section>
     </main>
   );
+}
+
+function renderGroupedFetchedNews(
+  groupedNews,
+  summaryLoadingMap,
+  saveLoadingMap,
+  summaryMap,
+  saveMessageMap,
+  summarizeTitle,
+  saveNews
+) {
+  const groups = Object.entries(groupedNews);
+
+  if (groups.length === 0) {
+    return <p style={styles.emptyText}>取得したニュースはまだありません。</p>;
+  }
+
+  return groups.map(([source, articles]) => (
+    <section key={source} style={styles.groupSection}>
+      <div style={styles.groupHeader}>
+        <h3 style={styles.groupHeading}>{source}</h3>
+        <span style={styles.groupCount}>{articles.length}件</span>
+      </div>
+
+      <ul style={styles.list}>
+        {articles.map((article) => {
+          const key = `${article.source}-${article.link}`;
+
+          return (
+            <li key={key} style={styles.listItem}>
+              <div style={styles.metaRow}>
+                <span style={styles.badge}>{article.source}</span>
+                <span style={styles.metaText}>
+                  公開: {formatDateTime(article.publishedAt)}
+                </span>
+              </div>
+
+              <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
+                {article.title}
+              </a>
+
+              <div style={styles.actionRow}>
+                <button
+                  onClick={() => summarizeTitle(article)}
+                  style={styles.secondaryButton}
+                  disabled={summaryLoadingMap[key]}
+                >
+                  {summaryLoadingMap[key] ? "要約中..." : "AI要約"}
+                </button>
+                <button
+                  onClick={() => saveNews(article)}
+                  style={styles.secondaryButton}
+                  disabled={saveLoadingMap[key]}
+                >
+                  {saveLoadingMap[key] ? "保存中..." : "保存"}
+                </button>
+              </div>
+
+              {summaryMap[key] ? (
+                <p style={styles.summaryText}>{summaryMap[key]}</p>
+              ) : null}
+
+              {saveMessageMap[key] ? (
+                <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  ));
+}
+
+function renderFlatArticleList(items, emptyMessage) {
+  if (items.length === 0) {
+    return <p style={styles.emptyText}>{emptyMessage}</p>;
+  }
+
+  return (
+    <ul style={styles.list}>
+      {items.map((article) => (
+        <li key={article.id || `${article.source}-${article.link}`} style={styles.listItem}>
+          <div style={styles.metaRow}>
+            <span style={styles.badge}>{article.source}</span>
+            <span style={styles.metaText}>
+              {article.created_at
+                ? `保存: ${formatDateTime(article.created_at)}`
+                : `公開: ${formatDateTime(article.publishedAt)}`}
+            </span>
+          </div>
+
+          <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
+            {article.title}
+          </a>
+
+          {article.summary ? (
+            <p style={styles.summaryText}>{article.summary}</p>
+          ) : (
+            <p style={styles.summaryEmpty}>要約はまだありません。</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function groupBySource(items) {
+  return items.reduce((groups, article) => {
+    const source = article.source || "その他";
+
+    if (!groups[source]) {
+      groups[source] = [];
+    }
+
+    groups[source].push(article);
+    return groups;
+  }, {});
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "日時不明";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "日時不明";
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 const styles = {
@@ -326,7 +411,7 @@ const styles = {
     fontFamily: "sans-serif"
   },
   card: {
-    maxWidth: "760px",
+    maxWidth: "860px",
     margin: "0 auto",
     padding: "24px",
     backgroundColor: "#ffffff",
@@ -347,6 +432,30 @@ const styles = {
     display: "flex",
     gap: "12px",
     flexWrap: "wrap"
+  },
+  infoText: {
+    marginTop: "14px",
+    marginBottom: 0,
+    color: "#475569",
+    fontSize: "14px"
+  },
+  panel: {
+    marginTop: "20px",
+    border: "1px solid #dbe4f0",
+    borderRadius: "12px",
+    overflow: "hidden",
+    backgroundColor: "#fbfdff"
+  },
+  panelSummary: {
+    cursor: "pointer",
+    padding: "14px 16px",
+    fontSize: "18px",
+    fontWeight: 700,
+    backgroundColor: "#eef4ff",
+    listStyle: "none"
+  },
+  panelBody: {
+    padding: "16px"
   },
   searchRow: {
     display: "flex",
@@ -380,21 +489,26 @@ const styles = {
     marginTop: "16px",
     color: "#dc2626"
   },
-  sectionHeading: {
-    marginTop: "28px",
-    marginBottom: "12px",
-    fontSize: "20px"
-  },
   groupSection: {
     marginBottom: "24px"
   },
-  groupHeading: {
-    marginTop: 0,
+  groupHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
     marginBottom: "10px",
     paddingBottom: "6px",
-    borderBottom: "2px solid #dbeafe",
+    borderBottom: "2px solid #dbeafe"
+  },
+  groupHeading: {
+    margin: 0,
     color: "#1d4ed8",
     fontSize: "18px"
+  },
+  groupCount: {
+    color: "#475569",
+    fontSize: "14px"
   },
   list: {
     listStyle: "none",
@@ -409,11 +523,25 @@ const styles = {
     borderRadius: "10px",
     backgroundColor: "#f8fafc"
   },
-  source: {
-    margin: "0 0 8px 0",
+  metaRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px 12px",
+    alignItems: "center",
+    marginBottom: "10px"
+  },
+  badge: {
+    display: "inline-block",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    backgroundColor: "#dbeafe",
+    color: "#1d4ed8",
     fontSize: "12px",
-    fontWeight: "bold",
-    color: "#2563eb"
+    fontWeight: 700
+  },
+  metaText: {
+    color: "#64748b",
+    fontSize: "13px"
   },
   link: {
     color: "#0f172a",
