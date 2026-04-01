@@ -10,7 +10,7 @@ export async function GET() {
   } catch (error) {
     return Response.json(
       {
-        message: "RSSの取得に失敗しました。",
+        message: "RSS の取得に失敗しました。",
         detail: error.message
       },
       {

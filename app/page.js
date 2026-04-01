@@ -7,9 +7,14 @@ export default function HomePage() {
   const [savedNews, setSavedNews] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
+  const [manualSource, setManualSource] = useState("Manual Save");
   const [loading, setLoading] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [manualSaveLoading, setManualSaveLoading] = useState(false);
+  const [manualSaveMessage, setManualSaveMessage] = useState("");
   const [error, setError] = useState("");
   const [savedError, setSavedError] = useState("");
   const [searchError, setSearchError] = useState("");
@@ -180,44 +185,95 @@ export default function HomePage() {
     }
   };
 
+  const saveManualNews = async () => {
+    setManualSaveLoading(true);
+    setManualSaveMessage("");
+
+    try {
+      if (!manualTitle.trim() || !manualUrl.trim()) {
+        throw new Error("タイトルと URL を入力してください。");
+      }
+
+      const response = await fetch("/api/news/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: manualTitle.trim(),
+          link: manualUrl.trim(),
+          source: manualSource.trim() || "Manual Save",
+          summary: ""
+        })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "手動保存に失敗しました。");
+      }
+
+      setManualSaveMessage(data.message);
+      setManualTitle("");
+      setManualUrl("");
+      loadSavedNews();
+    } catch (err) {
+      setManualSaveMessage(`エラー: ${err.message || "保存できませんでした。"}`);
+    } finally {
+      setManualSaveLoading(false);
+    }
+  };
+
   return (
     <main style={styles.page}>
       <section style={styles.shell}>
-        <header style={styles.header}>
-          <div>
+        <header style={styles.hero}>
+          <div style={styles.heroText}>
+            <div style={styles.eyebrow}>
+              <Icon name="rss_feed" />
+              <span>News Hub</span>
+            </div>
             <h1 style={styles.heading}>RSSニュースアプリ</h1>
             <p style={styles.description}>
-              一覧から気になるニュースをすぐ開ける密度に寄せています。RSS 追加は
-              [lib/rss-feeds.js] に定義を足すだけです。
+              Google 公開の Material Symbols を使って、一覧の視認性と操作性をまとめて改善しています。
+              RSS 追加は `lib/rss-feeds.js` に定義を足すだけです。
             </p>
+            {fetchedAt ? (
+              <p style={styles.infoText}>
+                <Icon name="schedule" />
+                <span>最終取得: {formatDateTime(fetchedAt)}</span>
+              </p>
+            ) : null}
           </div>
-          <div style={styles.headerActions}>
+
+          <div style={styles.heroActions}>
             <button onClick={loadNews} style={styles.primaryButton} disabled={loading}>
-              {loading ? "取得中..." : "ニュース取得"}
+              <Icon name="download" />
+              <span>{loading ? "取得中..." : "ニュース取得"}</span>
             </button>
             <button
               onClick={loadSavedNews}
-              style={styles.secondaryButton}
+              style={styles.secondaryButtonStrong}
               disabled={savedLoading}
             >
-              {savedLoading ? "読込中..." : "保存済み取得"}
+              <Icon name="bookmarks" />
+              <span>{savedLoading ? "読込中..." : "保存済み取得"}</span>
             </button>
           </div>
         </header>
 
-        {fetchedAt ? (
-          <p style={styles.infoText}>最終取得: {formatDateTime(fetchedAt)}</p>
-        ) : null}
-
         {error ? <p style={styles.error}>{error}</p> : null}
         {savedError ? <p style={styles.error}>{savedError}</p> : null}
 
-        <details open style={styles.panel}>
-          <summary style={styles.panelSummary}>検索</summary>
-          <div style={styles.panelBody}>
+        <div style={styles.topGrid}>
+          <section style={styles.card}>
+            <div style={styles.cardHeader}>
+              <div style={styles.cardTitle}>
+                <Icon name="search" />
+                <h2 style={styles.cardHeading}>検索</h2>
+              </div>
+            </div>
             <p style={styles.helpText}>
-              保存済みニュースのタイトルを部分一致で検索します。本文や要約ではなく、
-              タイトル文字列に検索語が含まれるニュースがヒットします。
+              保存済みニュースのタイトルを部分一致で検索します。
             </p>
             <div style={styles.searchRow}>
               <input
@@ -232,17 +288,66 @@ export default function HomePage() {
                 style={styles.secondaryButton}
                 disabled={searchLoading}
               >
-                {searchLoading ? "検索中..." : "検索"}
+                <Icon name="manage_search" />
+                <span>{searchLoading ? "検索中..." : "検索"}</span>
               </button>
             </div>
             {searchError ? <p style={styles.error}>{searchError}</p> : null}
             {renderCompactArticleList(searchResults, "検索結果はまだありません。")}
-          </div>
-        </details>
+          </section>
+
+          <section style={styles.card}>
+            <div style={styles.cardHeader}>
+              <div style={styles.cardTitle}>
+                <Icon name="bookmark_add" />
+                <h2 style={styles.cardHeading}>URLとタイトルを保存</h2>
+              </div>
+            </div>
+            <div style={styles.formGrid}>
+              <input
+                type="text"
+                value={manualTitle}
+                onChange={(event) => setManualTitle(event.target.value)}
+                placeholder="ニュースタイトル"
+                style={styles.input}
+              />
+              <input
+                type="url"
+                value={manualUrl}
+                onChange={(event) => setManualUrl(event.target.value)}
+                placeholder="https://example.com/article"
+                style={styles.input}
+              />
+              <input
+                type="text"
+                value={manualSource}
+                onChange={(event) => setManualSource(event.target.value)}
+                placeholder="保存元名"
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formActions}>
+              <button
+                onClick={saveManualNews}
+                style={styles.primaryButton}
+                disabled={manualSaveLoading}
+              >
+                <Icon name="save" />
+                <span>{manualSaveLoading ? "保存中..." : "手動保存"}</span>
+              </button>
+            </div>
+            {manualSaveMessage ? <p style={styles.saveMessage}>{manualSaveMessage}</p> : null}
+          </section>
+        </div>
 
         <details open style={styles.panel}>
           <summary style={styles.panelSummary}>
-            取得したニュース ({news.length})
+            <div style={styles.summaryInner}>
+              <div style={styles.cardTitle}>
+                <Icon name="newspaper" />
+                <span>取得したニュース ({news.length})</span>
+              </div>
+            </div>
           </summary>
           <div style={styles.panelBody}>
             {renderGroupedFetchedNews(
@@ -259,7 +364,12 @@ export default function HomePage() {
 
         <details style={styles.panel}>
           <summary style={styles.panelSummary}>
-            保存済みニュース ({savedNews.length})
+            <div style={styles.summaryInner}>
+              <div style={styles.cardTitle}>
+                <Icon name="inventory_2" />
+                <span>保存済みニュース ({savedNews.length})</span>
+              </div>
+            </div>
           </summary>
           <div style={styles.panelBody}>
             {renderCompactArticleList(savedNews, "保存済みニュースはまだありません。")}
@@ -289,7 +399,10 @@ function renderGroupedFetchedNews(
     <details key={source} style={styles.groupSection} open>
       <summary style={styles.groupSummary}>
         <div style={styles.groupHeader}>
-          <h3 style={styles.groupHeading}>{source}</h3>
+          <div style={styles.cardTitle}>
+            <Icon name="folder_open" />
+            <h3 style={styles.groupHeading}>{source}</h3>
+          </div>
           <span style={styles.groupCount}>{articles.length}件</span>
         </div>
       </summary>
@@ -325,14 +438,16 @@ function renderGroupedFetchedNews(
                     style={styles.secondaryButton}
                     disabled={summaryLoadingMap[key]}
                   >
-                    {summaryLoadingMap[key] ? "要約中..." : "AI要約"}
+                    <Icon name="auto_awesome" />
+                    <span>{summaryLoadingMap[key] ? "要約中..." : "AI要約"}</span>
                   </button>
                   <button
                     onClick={() => saveNews(article)}
                     style={styles.secondaryButton}
                     disabled={saveLoadingMap[key]}
                   >
-                    {saveLoadingMap[key] ? "保存中..." : "保存"}
+                    <Icon name="bookmark" />
+                    <span>{saveLoadingMap[key] ? "保存中..." : "保存"}</span>
                   </button>
                 </div>
               </li>
@@ -412,44 +527,97 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+function Icon({ name }) {
+  return <span className="material-symbols-outlined" style={styles.icon}>{name}</span>;
+}
+
 const styles = {
   page: {
     minHeight: "100vh",
     margin: 0,
-    padding: "24px 14px",
-    backgroundColor: "#eef3f8",
-    fontFamily: "sans-serif"
+    padding: "24px 14px 40px",
+    background:
+      "radial-gradient(circle at top left, #dbeafe 0%, #eef3f8 35%, #f8fafc 100%)"
   },
   shell: {
-    maxWidth: "1120px",
+    maxWidth: "1180px",
     margin: "0 auto"
   },
-  header: {
+  hero: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto",
-    gap: "16px",
+    gap: "18px",
     alignItems: "start",
-    padding: "18px 20px",
-    backgroundColor: "#ffffff",
-    borderRadius: "14px",
-    boxShadow: "0 10px 28px rgba(15, 23, 42, 0.08)"
+    padding: "22px",
+    background:
+      "linear-gradient(135deg, rgba(255,255,255,0.98), rgba(239,246,255,0.96))",
+    borderRadius: "18px",
+    boxShadow: "0 16px 36px rgba(15, 23, 42, 0.10)"
+  },
+  heroText: {
+    minWidth: 0
+  },
+  eyebrow: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    marginBottom: "10px",
+    padding: "6px 10px",
+    borderRadius: "999px",
+    backgroundColor: "#dbeafe",
+    color: "#1d4ed8",
+    fontSize: "13px",
+    fontWeight: 700
   },
   heading: {
-    marginTop: 0,
-    marginBottom: "10px"
+    margin: 0,
+    fontSize: "34px",
+    lineHeight: 1.15
   },
   description: {
-    margin: 0,
+    marginTop: "12px",
+    marginBottom: 0,
     color: "#475569",
-    lineHeight: 1.6
+    lineHeight: 1.7,
+    maxWidth: "760px"
   },
-  headerActions: {
+  heroActions: {
     display: "flex",
-    gap: "10px",
     flexWrap: "wrap",
+    gap: "10px",
     justifyContent: "flex-end"
   },
+  topGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.2fr 1fr",
+    gap: "16px",
+    marginTop: "16px"
+  },
+  card: {
+    padding: "18px",
+    backgroundColor: "#ffffff",
+    borderRadius: "16px",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)"
+  },
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "10px"
+  },
+  cardTitle: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px"
+  },
+  cardHeading: {
+    margin: 0,
+    fontSize: "18px"
+  },
   infoText: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
     margin: "12px 4px 0",
     color: "#475569",
     fontSize: "14px"
@@ -457,18 +625,21 @@ const styles = {
   panel: {
     marginTop: "16px",
     border: "1px solid #dbe4f0",
-    borderRadius: "12px",
+    borderRadius: "16px",
     overflow: "hidden",
     backgroundColor: "#ffffff",
     boxShadow: "0 8px 20px rgba(15, 23, 42, 0.04)"
   },
   panelSummary: {
     cursor: "pointer",
-    padding: "12px 16px",
-    fontSize: "17px",
-    fontWeight: 700,
-    backgroundColor: "#eef4ff",
-    listStyle: "none"
+    padding: "14px 16px",
+    listStyle: "none",
+    backgroundColor: "#f4f8ff"
+  },
+  summaryInner: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between"
   },
   panelBody: {
     padding: "14px 16px"
@@ -479,6 +650,15 @@ const styles = {
     flexWrap: "wrap",
     marginBottom: "10px"
   },
+  formGrid: {
+    display: "grid",
+    gap: "10px"
+  },
+  formActions: {
+    marginTop: "12px",
+    display: "flex",
+    justifyContent: "flex-start"
+  },
   helpText: {
     marginTop: 0,
     marginBottom: "10px",
@@ -487,23 +667,43 @@ const styles = {
     fontSize: "14px"
   },
   input: {
-    minWidth: "260px",
-    padding: "10px 12px",
-    border: "1px solid #cbd5e1",
-    borderRadius: "8px"
+    minWidth: "220px",
+    padding: "12px 14px",
+    border: "1px solid #d1d9e6",
+    borderRadius: "10px",
+    fontSize: "14px"
   },
   primaryButton: {
-    padding: "10px 16px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "11px 16px",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "10px",
     backgroundColor: "#2563eb",
     color: "#ffffff",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: 700
+  },
+  secondaryButtonStrong: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "11px 16px",
+    border: "1px solid #bfdbfe",
+    borderRadius: "10px",
+    backgroundColor: "#eff6ff",
+    color: "#1d4ed8",
+    cursor: "pointer",
+    fontWeight: 700
   },
   secondaryButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
     padding: "8px 12px",
     border: "1px solid #cbd5e1",
-    borderRadius: "8px",
+    borderRadius: "10px",
     backgroundColor: "#ffffff",
     color: "#0f172a",
     cursor: "pointer",
@@ -516,13 +716,14 @@ const styles = {
   groupSection: {
     marginBottom: "12px",
     border: "1px solid #dbe4f0",
-    borderRadius: "10px",
+    borderRadius: "12px",
     backgroundColor: "#ffffff"
   },
   groupSummary: {
     cursor: "pointer",
     listStyle: "none",
-    padding: "10px 12px"
+    padding: "10px 12px",
+    backgroundColor: "#f8fbff"
   },
   groupBody: {
     padding: "0 12px 12px"
@@ -531,13 +732,12 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "12px",
-    marginBottom: 0
+    gap: "12px"
   },
   groupHeading: {
     margin: 0,
     color: "#1d4ed8",
-    fontSize: "17px"
+    fontSize: "16px"
   },
   groupCount: {
     color: "#475569",
@@ -557,7 +757,7 @@ const styles = {
     alignItems: "start",
     padding: "12px 14px",
     border: "1px solid #e2e8f0",
-    borderRadius: "10px",
+    borderRadius: "12px",
     backgroundColor: "#f8fafc"
   },
   itemMain: {
@@ -578,7 +778,7 @@ const styles = {
   },
   badge: {
     display: "inline-block",
-    padding: "3px 8px",
+    padding: "4px 9px",
     borderRadius: "999px",
     backgroundColor: "#dbeafe",
     color: "#1d4ed8",
@@ -593,7 +793,8 @@ const styles = {
     color: "#0f172a",
     textDecoration: "none",
     lineHeight: 1.5,
-    display: "block"
+    display: "block",
+    fontWeight: 700
   },
   summaryText: {
     marginTop: "8px",
@@ -617,5 +818,9 @@ const styles = {
   emptyText: {
     margin: 0,
     color: "#64748b"
+  },
+  icon: {
+    fontSize: "20px",
+    lineHeight: 1
   }
 };
