@@ -182,24 +182,28 @@ export default function HomePage() {
 
   return (
     <main style={styles.page}>
-      <section style={styles.card}>
-        <h1 style={styles.heading}>RSSニュースアプリ</h1>
-        <p style={styles.description}>
-          RSSごとにニュースを見やすく整理し、公開日時、要約、保存、検索をまとめて扱えます。
-        </p>
-
-        <div style={styles.toolbar}>
-          <button onClick={loadNews} style={styles.primaryButton} disabled={loading}>
-            {loading ? "取得中..." : "ニュース取得"}
-          </button>
-          <button
-            onClick={loadSavedNews}
-            style={styles.secondaryButton}
-            disabled={savedLoading}
-          >
-            {savedLoading ? "読込中..." : "保存済みニュース取得"}
-          </button>
-        </div>
+      <section style={styles.shell}>
+        <header style={styles.header}>
+          <div>
+            <h1 style={styles.heading}>RSSニュースアプリ</h1>
+            <p style={styles.description}>
+              一覧から気になるニュースをすぐ開ける密度に寄せています。RSS 追加は
+              [lib/rss-feeds.js] に定義を足すだけです。
+            </p>
+          </div>
+          <div style={styles.headerActions}>
+            <button onClick={loadNews} style={styles.primaryButton} disabled={loading}>
+              {loading ? "取得中..." : "ニュース取得"}
+            </button>
+            <button
+              onClick={loadSavedNews}
+              style={styles.secondaryButton}
+              disabled={savedLoading}
+            >
+              {savedLoading ? "読込中..." : "保存済み取得"}
+            </button>
+          </div>
+        </header>
 
         {fetchedAt ? (
           <p style={styles.infoText}>最終取得: {formatDateTime(fetchedAt)}</p>
@@ -232,7 +236,7 @@ export default function HomePage() {
               </button>
             </div>
             {searchError ? <p style={styles.error}>{searchError}</p> : null}
-            {renderFlatArticleList(searchResults, "検索結果はまだありません。")}
+            {renderCompactArticleList(searchResults, "検索結果はまだありません。")}
           </div>
         </details>
 
@@ -258,10 +262,7 @@ export default function HomePage() {
             保存済みニュース ({savedNews.length})
           </summary>
           <div style={styles.panelBody}>
-            {renderFlatArticleList(
-              savedNews,
-              "保存済みニュースはまだありません。"
-            )}
+            {renderCompactArticleList(savedNews, "保存済みニュースはまだありません。")}
           </div>
         </details>
       </section>
@@ -291,24 +292,31 @@ function renderGroupedFetchedNews(
         <span style={styles.groupCount}>{articles.length}件</span>
       </div>
 
-      <ul style={styles.list}>
+      <ul style={styles.compactList}>
         {articles.map((article) => {
           const key = `${article.source}-${article.link}`;
 
           return (
-            <li key={key} style={styles.listItem}>
-              <div style={styles.metaRow}>
-                <span style={styles.badge}>{article.source}</span>
-                <span style={styles.metaText}>
-                  公開: {formatDateTime(article.publishedAt)}
-                </span>
+            <li key={key} style={styles.compactItem}>
+              <div style={styles.itemMain}>
+                <div style={styles.metaRow}>
+                  <span style={styles.badge}>{article.source}</span>
+                  <span style={styles.metaText}>
+                    公開: {formatDateTime(article.publishedAt)}
+                  </span>
+                </div>
+                <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
+                  {article.title}
+                </a>
+                {summaryMap[key] ? (
+                  <p style={styles.summaryText}>{summaryMap[key]}</p>
+                ) : null}
+                {saveMessageMap[key] ? (
+                  <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
+                ) : null}
               </div>
 
-              <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-                {article.title}
-              </a>
-
-              <div style={styles.actionRow}>
+              <div style={styles.itemActions}>
                 <button
                   onClick={() => summarizeTitle(article)}
                   style={styles.secondaryButton}
@@ -324,14 +332,6 @@ function renderGroupedFetchedNews(
                   {saveLoadingMap[key] ? "保存中..." : "保存"}
                 </button>
               </div>
-
-              {summaryMap[key] ? (
-                <p style={styles.summaryText}>{summaryMap[key]}</p>
-              ) : null}
-
-              {saveMessageMap[key] ? (
-                <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
-              ) : null}
             </li>
           );
         })}
@@ -340,33 +340,35 @@ function renderGroupedFetchedNews(
   ));
 }
 
-function renderFlatArticleList(items, emptyMessage) {
+function renderCompactArticleList(items, emptyMessage) {
   if (items.length === 0) {
     return <p style={styles.emptyText}>{emptyMessage}</p>;
   }
 
   return (
-    <ul style={styles.list}>
+    <ul style={styles.compactList}>
       {items.map((article) => (
-        <li key={article.id || `${article.source}-${article.link}`} style={styles.listItem}>
-          <div style={styles.metaRow}>
-            <span style={styles.badge}>{article.source}</span>
-            <span style={styles.metaText}>
-              {article.created_at
-                ? `保存: ${formatDateTime(article.created_at)}`
-                : `公開: ${formatDateTime(article.publishedAt)}`}
-            </span>
+        <li key={article.id || `${article.source}-${article.link}`} style={styles.compactItem}>
+          <div style={styles.itemMain}>
+            <div style={styles.metaRow}>
+              <span style={styles.badge}>{article.source}</span>
+              <span style={styles.metaText}>
+                {article.created_at
+                  ? `保存: ${formatDateTime(article.created_at)}`
+                  : `公開: ${formatDateTime(article.publishedAt)}`}
+              </span>
+            </div>
+
+            <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
+              {article.title}
+            </a>
+
+            {article.summary ? (
+              <p style={styles.summaryText}>{article.summary}</p>
+            ) : (
+              <p style={styles.summaryEmpty}>要約はまだありません。</p>
+            )}
           </div>
-
-          <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-            {article.title}
-          </a>
-
-          {article.summary ? (
-            <p style={styles.summaryText}>{article.summary}</p>
-          ) : (
-            <p style={styles.summaryEmpty}>要約はまだありません。</p>
-          )}
         </li>
       ))}
     </ul>
@@ -410,68 +412,74 @@ const styles = {
   page: {
     minHeight: "100vh",
     margin: 0,
-    padding: "40px 16px",
-    backgroundColor: "#f5f7fb",
+    padding: "24px 14px",
+    backgroundColor: "#eef3f8",
     fontFamily: "sans-serif"
   },
-  card: {
-    maxWidth: "860px",
-    margin: "0 auto",
-    padding: "24px",
+  shell: {
+    maxWidth: "1120px",
+    margin: "0 auto"
+  },
+  header: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: "16px",
+    alignItems: "start",
+    padding: "18px 20px",
     backgroundColor: "#ffffff",
-    borderRadius: "12px",
-    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)"
+    borderRadius: "14px",
+    boxShadow: "0 10px 28px rgba(15, 23, 42, 0.08)"
   },
   heading: {
     marginTop: 0,
-    marginBottom: "12px"
+    marginBottom: "10px"
   },
   description: {
-    marginTop: 0,
-    marginBottom: "16px",
+    margin: 0,
     color: "#475569",
     lineHeight: 1.6
   },
-  toolbar: {
+  headerActions: {
     display: "flex",
-    gap: "12px",
-    flexWrap: "wrap"
+    gap: "10px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end"
   },
   infoText: {
-    marginTop: "14px",
-    marginBottom: 0,
+    margin: "12px 4px 0",
     color: "#475569",
     fontSize: "14px"
   },
   panel: {
-    marginTop: "20px",
+    marginTop: "16px",
     border: "1px solid #dbe4f0",
     borderRadius: "12px",
     overflow: "hidden",
-    backgroundColor: "#fbfdff"
+    backgroundColor: "#ffffff",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.04)"
   },
   panelSummary: {
     cursor: "pointer",
-    padding: "14px 16px",
-    fontSize: "18px",
+    padding: "12px 16px",
+    fontSize: "17px",
     fontWeight: 700,
     backgroundColor: "#eef4ff",
     listStyle: "none"
   },
   panelBody: {
-    padding: "16px"
+    padding: "14px 16px"
   },
   searchRow: {
     display: "flex",
-    gap: "12px",
+    gap: "10px",
     flexWrap: "wrap",
-    marginBottom: "12px"
+    marginBottom: "10px"
   },
   helpText: {
     marginTop: 0,
-    marginBottom: "12px",
+    marginBottom: "10px",
     color: "#475569",
-    lineHeight: 1.6,
+    lineHeight: 1.55,
     fontSize: "14px"
   },
   input: {
@@ -494,56 +502,70 @@ const styles = {
     borderRadius: "8px",
     backgroundColor: "#ffffff",
     color: "#0f172a",
-    cursor: "pointer"
+    cursor: "pointer",
+    whiteSpace: "nowrap"
   },
   error: {
-    marginTop: "16px",
+    marginTop: "14px",
     color: "#dc2626"
   },
   groupSection: {
-    marginBottom: "24px"
+    marginBottom: "18px"
   },
   groupHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "12px",
-    marginBottom: "10px",
+    marginBottom: "8px",
     paddingBottom: "6px",
     borderBottom: "2px solid #dbeafe"
   },
   groupHeading: {
     margin: 0,
     color: "#1d4ed8",
-    fontSize: "18px"
+    fontSize: "17px"
   },
   groupCount: {
     color: "#475569",
-    fontSize: "14px"
+    fontSize: "13px"
   },
-  list: {
+  compactList: {
     listStyle: "none",
     padding: 0,
-    marginTop: 0,
+    margin: 0,
     display: "grid",
-    gap: "12px"
+    gap: "10px"
   },
-  listItem: {
-    padding: "16px",
+  compactItem: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: "12px",
+    alignItems: "start",
+    padding: "12px 14px",
     border: "1px solid #e2e8f0",
     borderRadius: "10px",
     backgroundColor: "#f8fafc"
+  },
+  itemMain: {
+    minWidth: 0
+  },
+  itemActions: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end"
   },
   metaRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: "8px 12px",
     alignItems: "center",
-    marginBottom: "10px"
+    marginBottom: "8px"
   },
   badge: {
     display: "inline-block",
-    padding: "4px 8px",
+    padding: "3px 8px",
     borderRadius: "999px",
     backgroundColor: "#dbeafe",
     color: "#1d4ed8",
@@ -557,32 +579,30 @@ const styles = {
   link: {
     color: "#0f172a",
     textDecoration: "none",
-    lineHeight: 1.6
-  },
-  actionRow: {
-    marginTop: "12px",
-    display: "flex",
-    gap: "10px",
-    flexWrap: "wrap"
+    lineHeight: 1.5,
+    display: "block"
   },
   summaryText: {
-    marginTop: "10px",
+    marginTop: "8px",
     marginBottom: 0,
     color: "#334155",
-    lineHeight: 1.6
+    lineHeight: 1.55,
+    fontSize: "14px"
   },
   summaryEmpty: {
-    marginTop: "10px",
+    marginTop: "8px",
     marginBottom: 0,
-    color: "#64748b"
+    color: "#64748b",
+    fontSize: "14px"
   },
   saveMessage: {
-    marginTop: "10px",
+    marginTop: "8px",
     marginBottom: 0,
-    color: "#047857"
+    color: "#047857",
+    fontSize: "14px"
   },
   emptyText: {
-    marginTop: 0,
+    margin: 0,
     color: "#64748b"
   }
 };
