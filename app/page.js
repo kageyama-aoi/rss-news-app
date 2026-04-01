@@ -347,6 +347,10 @@ export default function HomePage() {
                 <Icon name="newspaper" />
                 <span>取得したニュース ({news.length})</span>
               </div>
+              <div style={styles.summaryHint}>
+                <Icon name="expand_more" />
+                <span>開閉</span>
+              </div>
             </div>
           </summary>
           <div style={styles.panelBody}>
@@ -368,6 +372,10 @@ export default function HomePage() {
               <div style={styles.cardTitle}>
                 <Icon name="inventory_2" />
                 <span>保存済みニュース ({savedNews.length})</span>
+              </div>
+              <div style={styles.summaryHint}>
+                <Icon name="expand_more" />
+                <span>開閉</span>
               </div>
             </div>
           </summary>
@@ -403,7 +411,13 @@ function renderGroupedFetchedNews(
             <Icon name="folder_open" />
             <h3 style={styles.groupHeading}>{source}</h3>
           </div>
-          <span style={styles.groupCount}>{articles.length}件</span>
+          <div style={styles.groupHeaderRight}>
+            <span style={styles.groupCount}>{articles.length}件</span>
+            <div style={styles.summaryHint}>
+              <Icon name="expand_more" />
+              <span>開閉</span>
+            </div>
+          </div>
         </div>
       </summary>
 
@@ -641,6 +655,14 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between"
   },
+  summaryHint: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    color: "#64748b",
+    fontSize: "12px",
+    fontWeight: 700
+  },
   panelBody: {
     padding: "14px 16px"
   },
@@ -734,6 +756,11 @@ const styles = {
     justifyContent: "space-between",
     gap: "12px"
   },
+  groupHeaderRight: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "10px"
+  },
   groupHeading: {
     margin: 0,
     color: "#1d4ed8",
@@ -748,7 +775,8 @@ const styles = {
     padding: 0,
     margin: 0,
     display: "grid",
-    gap: "10px"
+    gap: "10px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))"
   },
   compactItem: {
     display: "grid",
