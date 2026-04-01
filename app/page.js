@@ -5,10 +5,14 @@ import { useState } from "react";
 export default function HomePage() {
   const [news, setNews] = useState([]);
   const [savedNews, setSavedNews] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState("");
   const [savedError, setSavedError] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [summaryLoadingMap, setSummaryLoadingMap] = useState({});
   const [summaryMap, setSummaryMap] = useState({});
   const [saveLoadingMap, setSaveLoadingMap] = useState({});
@@ -56,6 +60,37 @@ export default function HomePage() {
       setSavedError(err.message || "保存済みニュースを取得できませんでした。");
     } finally {
       setSavedLoading(false);
+    }
+  };
+
+  const searchSavedNews = async () => {
+    setSearchLoading(true);
+    setSearchError("");
+
+    try {
+      if (!searchKeyword.trim()) {
+        throw new Error("検索キーワードを入力してください。");
+      }
+
+      const response = await fetch(
+        `/api/news/search?q=${encodeURIComponent(searchKeyword.trim())}`,
+        {
+          cache: "no-store"
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "ニュース検索に失敗しました。");
+      }
+
+      setSearchResults(data);
+    } catch (err) {
+      setSearchError(err.message || "検索に失敗しました。");
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -153,12 +188,41 @@ export default function HomePage() {
     }
   };
 
+  const renderArticleList = (items, emptyMessage) => {
+    if (items.length === 0) {
+      return <p style={styles.emptyText}>{emptyMessage}</p>;
+    }
+
+    return (
+      <ul style={styles.list}>
+        {items.map((article) => (
+          <li key={article.id || `${article.source}-${article.link}`} style={styles.listItem}>
+            <p style={styles.source}>{article.source}</p>
+            <a
+              href={article.link}
+              target="_blank"
+              rel="noreferrer"
+              style={styles.link}
+            >
+              {article.title}
+            </a>
+            {article.summary ? (
+              <p style={styles.summaryText}>{article.summary}</p>
+            ) : (
+              <p style={styles.summaryEmpty}>要約はまだありません。</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <main style={styles.page}>
       <section style={styles.card}>
         <h1 style={styles.heading}>RSSニュースアプリ</h1>
         <p style={styles.description}>
-          Yahoo News と NHK News の RSS をまとめて取得し、AI要約と保存まで行います。
+          ニュース取得、AI要約、保存、検索までを段階的に確認できる構成です。
         </p>
 
         <div style={styles.toolbar}>
@@ -223,27 +287,28 @@ export default function HomePage() {
           })}
         </ul>
 
+        <h2 style={styles.sectionHeading}>検索</h2>
+        <div style={styles.searchRow}>
+          <input
+            type="text"
+            value={searchKeyword}
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            placeholder="タイトル検索"
+            style={styles.input}
+          />
+          <button
+            onClick={searchSavedNews}
+            style={styles.secondaryButton}
+            disabled={searchLoading}
+          >
+            {searchLoading ? "検索中..." : "検索"}
+          </button>
+        </div>
+        {searchError ? <p style={styles.error}>{searchError}</p> : null}
+        {renderArticleList(searchResults, "検索結果はまだありません。")}
+
         <h2 style={styles.sectionHeading}>保存済みニュース</h2>
-        <ul style={styles.list}>
-          {savedNews.map((article) => (
-            <li key={article.id} style={styles.listItem}>
-              <p style={styles.source}>{article.source}</p>
-              <a
-                href={article.link}
-                target="_blank"
-                rel="noreferrer"
-                style={styles.link}
-              >
-                {article.title}
-              </a>
-              {article.summary ? (
-                <p style={styles.summaryText}>{article.summary}</p>
-              ) : (
-                <p style={styles.summaryEmpty}>要約はまだ保存されていません。</p>
-              )}
-            </li>
-          ))}
-        </ul>
+        {renderArticleList(savedNews, "保存済みニュースはまだありません。")}
       </section>
     </main>
   );
@@ -279,6 +344,18 @@ const styles = {
     display: "flex",
     gap: "12px",
     flexWrap: "wrap"
+  },
+  searchRow: {
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px"
+  },
+  input: {
+    minWidth: "260px",
+    padding: "10px 12px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "8px"
   },
   primaryButton: {
     padding: "10px 16px",
@@ -350,5 +427,9 @@ const styles = {
     marginTop: "10px",
     marginBottom: 0,
     color: "#047857"
+  },
+  emptyText: {
+    marginTop: 0,
+    color: "#64748b"
   }
 };
