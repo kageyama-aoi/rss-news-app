@@ -23,9 +23,7 @@ export default function HomePage() {
     setError("");
 
     try {
-      const response = await fetch("/api/rss", {
-        cache: "no-store"
-      });
+      const response = await fetch("/api/rss", { cache: "no-store" });
 
       if (!response.ok) {
         throw new Error("ニュースの取得に失敗しました。");
@@ -45,10 +43,7 @@ export default function HomePage() {
     setSavedError("");
 
     try {
-      const response = await fetch("/api/news", {
-        cache: "no-store"
-      });
-
+      const response = await fetch("/api/news", { cache: "no-store" });
       const data = await response.json();
 
       if (!response.ok) {
@@ -74,11 +69,8 @@ export default function HomePage() {
 
       const response = await fetch(
         `/api/news/search?q=${encodeURIComponent(searchKeyword.trim())}`,
-        {
-          cache: "no-store"
-        }
+        { cache: "no-store" }
       );
-
       const data = await response.json();
 
       if (!response.ok) {
@@ -108,11 +100,8 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          title: article.title
-        })
+        body: JSON.stringify({ title: article.title })
       });
-
       const data = await response.json();
 
       if (!response.ok) {
@@ -162,7 +151,6 @@ export default function HomePage() {
           summary: summaryMap[key] || ""
         })
       });
-
       const data = await response.json();
 
       if (!response.ok) {
@@ -188,7 +176,18 @@ export default function HomePage() {
     }
   };
 
-  const renderArticleList = (items, emptyMessage) => {
+  const groupBySource = (items) => {
+    return items.reduce((groups, article) => {
+      const source = article.source || "その他";
+      if (!groups[source]) {
+        groups[source] = [];
+      }
+      groups[source].push(article);
+      return groups;
+    }, {});
+  };
+
+  const renderSavedArticleList = (items, emptyMessage) => {
     if (items.length === 0) {
       return <p style={styles.emptyText}>{emptyMessage}</p>;
     }
@@ -198,12 +197,7 @@ export default function HomePage() {
         {items.map((article) => (
           <li key={article.id || `${article.source}-${article.link}`} style={styles.listItem}>
             <p style={styles.source}>{article.source}</p>
-            <a
-              href={article.link}
-              target="_blank"
-              rel="noreferrer"
-              style={styles.link}
-            >
+            <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
               {article.title}
             </a>
             {article.summary ? (
@@ -217,44 +211,23 @@ export default function HomePage() {
     );
   };
 
-  return (
-    <main style={styles.page}>
-      <section style={styles.card}>
-        <h1 style={styles.heading}>RSSニュースアプリ</h1>
-        <p style={styles.description}>
-          ニュース取得、AI要約、保存、検索までを段階的に確認できる構成です。
-        </p>
+  const renderGroupedFetchedNews = () => {
+    if (news.length === 0) {
+      return <p style={styles.emptyText}>取得したニュースはまだありません。</p>;
+    }
 
-        <div style={styles.toolbar}>
-          <button onClick={loadNews} style={styles.primaryButton} disabled={loading}>
-            {loading ? "取得中..." : "ニュース取得"}
-          </button>
-          <button
-            onClick={loadSavedNews}
-            style={styles.secondaryButton}
-            disabled={savedLoading}
-          >
-            {savedLoading ? "読込中..." : "保存済みニュース取得"}
-          </button>
-        </div>
+    const groupedNews = groupBySource(news);
 
-        {error ? <p style={styles.error}>{error}</p> : null}
-        {savedError ? <p style={styles.error}>{savedError}</p> : null}
-
-        <h2 style={styles.sectionHeading}>取得したニュース</h2>
+    return Object.entries(groupedNews).map(([source, articles]) => (
+      <section key={source} style={styles.groupSection}>
+        <h3 style={styles.groupHeading}>{source}</h3>
         <ul style={styles.list}>
-          {news.map((article) => {
+          {articles.map((article) => {
             const key = `${article.source}-${article.link}`;
 
             return (
               <li key={key} style={styles.listItem}>
-                <p style={styles.source}>{article.source}</p>
-                <a
-                  href={article.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={styles.link}
-                >
+                <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
                   {article.title}
                 </a>
 
@@ -286,6 +259,36 @@ export default function HomePage() {
             );
           })}
         </ul>
+      </section>
+    ));
+  };
+
+  return (
+    <main style={styles.page}>
+      <section style={styles.card}>
+        <h1 style={styles.heading}>RSSニュースアプリ</h1>
+        <p style={styles.description}>
+          RSSごとにニュースをまとめて表示し、AI要約、保存、検索まで確認できます。
+        </p>
+
+        <div style={styles.toolbar}>
+          <button onClick={loadNews} style={styles.primaryButton} disabled={loading}>
+            {loading ? "取得中..." : "ニュース取得"}
+          </button>
+          <button
+            onClick={loadSavedNews}
+            style={styles.secondaryButton}
+            disabled={savedLoading}
+          >
+            {savedLoading ? "読込中..." : "保存済みニュース取得"}
+          </button>
+        </div>
+
+        {error ? <p style={styles.error}>{error}</p> : null}
+        {savedError ? <p style={styles.error}>{savedError}</p> : null}
+
+        <h2 style={styles.sectionHeading}>取得したニュース</h2>
+        {renderGroupedFetchedNews()}
 
         <h2 style={styles.sectionHeading}>検索</h2>
         <div style={styles.searchRow}>
@@ -305,10 +308,10 @@ export default function HomePage() {
           </button>
         </div>
         {searchError ? <p style={styles.error}>{searchError}</p> : null}
-        {renderArticleList(searchResults, "検索結果はまだありません。")}
+        {renderSavedArticleList(searchResults, "検索結果はまだありません。")}
 
         <h2 style={styles.sectionHeading}>保存済みニュース</h2>
-        {renderArticleList(savedNews, "保存済みニュースはまだありません。")}
+        {renderSavedArticleList(savedNews, "保存済みニュースはまだありません。")}
       </section>
     </main>
   );
@@ -381,6 +384,17 @@ const styles = {
     marginTop: "28px",
     marginBottom: "12px",
     fontSize: "20px"
+  },
+  groupSection: {
+    marginBottom: "24px"
+  },
+  groupHeading: {
+    marginTop: 0,
+    marginBottom: "10px",
+    paddingBottom: "6px",
+    borderBottom: "2px solid #dbeafe",
+    color: "#1d4ed8",
+    fontSize: "18px"
   },
   list: {
     listStyle: "none",
