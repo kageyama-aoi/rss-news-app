@@ -16,13 +16,19 @@ const COPY = {
   latestFeedHint: "ソース単位で整理した最新ニュース",
   savedLibrary: "保存ライブラリ",
   savedLibraryHint: "あとで見返す記事を保管",
-  searchTitle: "保存済み検索",
+  searchTitle: "画面内検索",
   searchDescription:
-    "保存済み記事のタイトルを検索します。主要導線として常に見つけやすい位置に配置しています。",
-  searchPlaceholder: "タイトルで検索",
-  searchAction: "検索",
-  searchLoading: "検索中...",
+    "最新フィードと保存ライブラリの表示内容をまとめて検索します。画面に見えているタイトルやソース名でそのまま絞り込めます。",
+  searchPlaceholder: "タイトル・ソース名で検索",
   clearAction: "クリア",
+  searchScopeAll: "すべて",
+  searchScopeFeed: "最新フィード",
+  searchScopeSaved: "保存済み",
+  searchEmpty: "一致する記事はありません。",
+  searchIdle: "検索語を入力すると、画面内の記事をここに表示します。",
+  searchSummaryAll: "最新フィードと保存ライブラリを横断して検索しています。",
+  searchSummaryFeed: "最新フィードだけを検索しています。",
+  searchSummarySaved: "保存ライブラリだけを検索しています。",
   manualTitle: "手動保存",
   manualDescription:
     "URLとタイトルを直接入力して保存できます。入力項目は最小限に絞り、軽い操作感を優先しています。",
@@ -37,9 +43,10 @@ const COPY = {
   saveAction: "保存",
   saveLoading: "保存中...",
   openAction: "開く",
-  searchEmpty: "検索結果はまだありません。",
   fetchedEmpty: "ニュースを取得するとここに表示されます。",
   savedEmpty: "保存済みニュースはまだありません。",
+  savedUnavailable:
+    "保存機能は現在利用できません。Supabase 環境変数が未設定のため、保存済み一覧と保存済み検索は動作しません。",
   noSummary: "要約はまだありません。",
   unknownDate: "日時不明",
   sourceFallback: "その他",
@@ -49,25 +56,25 @@ const COPY = {
   sectionSearch: "検索",
   sectionCapture: "保存",
   sectionFeed: "フィード",
-  sectionLibrary: "ライブラリ"
+  sectionLibrary: "ライブラリ",
+  savedStatusReady: "保存機能は利用可能です。",
+  savedStatusUnavailable: "保存機能は未設定です。"
 };
 
 export default function HomePage() {
   const [news, setNews] = useState([]);
   const [savedNews, setSavedNews] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchScope, setSearchScope] = useState("all");
   const [manualTitle, setManualTitle] = useState("");
   const [manualUrl, setManualUrl] = useState("");
   const [manualSource, setManualSource] = useState(COPY.defaultSource);
   const [loading, setLoading] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [manualSaveLoading, setManualSaveLoading] = useState(false);
   const [manualSaveMessage, setManualSaveMessage] = useState("");
   const [error, setError] = useState("");
   const [savedError, setSavedError] = useState("");
-  const [searchError, setSearchError] = useState("");
   const [summaryLoadingMap, setSummaryLoadingMap] = useState({});
   const [summaryMap, setSummaryMap] = useState({});
   const [saveLoadingMap, setSaveLoadingMap] = useState({});
@@ -76,10 +83,51 @@ export default function HomePage() {
 
   const groupedNews = useMemo(() => groupBySource(news), [news]);
   const sourceCount = Object.keys(groupedNews).length;
+  const isSavedAvailable = !savedError.includes("未設定");
   const activeStatus =
-    loading || savedLoading || searchLoading || manualSaveLoading
-      ? COPY.liveStatusBusy
-      : COPY.liveStatusIdle;
+    loading || savedLoading || manualSaveLoading ? COPY.liveStatusBusy : COPY.liveStatusIdle;
+
+  const searchResults = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+
+    if (!keyword) {
+      return [];
+    }
+
+    const targets = [];
+
+    if (searchScope === "all" || searchScope === "feed") {
+      news.forEach((article) => {
+        targets.push({
+          ...article,
+          searchBucket: COPY.searchScopeFeed
+        });
+      });
+    }
+
+    if (searchScope === "all" || searchScope === "saved") {
+      savedNews.forEach((article) => {
+        targets.push({
+          ...article,
+          searchBucket: COPY.searchScopeSaved
+        });
+      });
+    }
+
+    return targets.filter((article) => {
+      const haystack = [
+        article.title,
+        article.source,
+        article.summary,
+        article.searchBucket
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(keyword);
+    });
+  }, [news, savedNews, searchKeyword, searchScope]);
 
   useEffect(() => {
     loadNews();
@@ -121,44 +169,16 @@ export default function HomePage() {
 
       setSavedNews(data);
     } catch (err) {
-      setSavedError(err.message || "保存済みニュースを取得できませんでした。");
+      const message = err.message || "保存済みニュースを取得できませんでした。";
+      setSavedError(message);
+      setSavedNews([]);
     } finally {
       setSavedLoading(false);
     }
   };
 
-  const searchSavedNews = async () => {
-    setSearchLoading(true);
-    setSearchError("");
-
-    try {
-      if (!searchKeyword.trim()) {
-        throw new Error("検索キーワードを入力してください。");
-      }
-
-      const response = await fetch(
-        `/api/news/search?q=${encodeURIComponent(searchKeyword.trim())}`,
-        { cache: "no-store" }
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "ニュース検索に失敗しました。");
-      }
-
-      setSearchResults(data);
-    } catch (err) {
-      setSearchError(err.message || "検索に失敗しました。");
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
   const clearSearch = () => {
     setSearchKeyword("");
-    setSearchResults([]);
-    setSearchError("");
   };
 
   const summarizeTitle = async (article) => {
@@ -338,6 +358,9 @@ export default function HomePage() {
               <ToolbarIcon name="bookmark.circle" />
               <span>{savedLoading ? COPY.syncSavedLoading : COPY.syncSaved}</span>
             </button>
+            <p className="hero-status-note">
+              {isSavedAvailable ? COPY.savedStatusReady : COPY.savedStatusUnavailable}
+            </p>
           </div>
         </header>
 
@@ -359,6 +382,23 @@ export default function HomePage() {
 
             <p className="panel-description">{COPY.searchDescription}</p>
 
+            <div className="search-scope" role="tablist" aria-label="検索対象">
+              {[
+                ["all", COPY.searchScopeAll],
+                ["feed", COPY.searchScopeFeed],
+                ["saved", COPY.searchScopeSaved]
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`scope-chip ${searchScope === value ? "active" : ""}`}
+                  onClick={() => setSearchScope(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <div className="search-bar" role="search">
               <label className="search-field">
                 <SearchIcon />
@@ -366,33 +406,31 @@ export default function HomePage() {
                   type="search"
                   value={searchKeyword}
                   onChange={(event) => setSearchKeyword(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      searchSavedNews();
-                    }
-                  }}
                   placeholder={COPY.searchPlaceholder}
                 />
               </label>
               <button
-                className="button button-secondary"
-                onClick={searchSavedNews}
-                disabled={searchLoading}
-              >
-                <span>{searchLoading ? COPY.searchLoading : COPY.searchAction}</span>
-              </button>
-              <button
                 className="button button-tertiary"
                 onClick={clearSearch}
-                disabled={!searchKeyword && searchResults.length === 0}
+                disabled={!searchKeyword}
               >
                 <span>{COPY.clearAction}</span>
               </button>
             </div>
 
-            {searchError ? <p className="inline-error">{searchError}</p> : null}
+            <p className="search-summary">
+              {searchScope === "all"
+                ? COPY.searchSummaryAll
+                : searchScope === "feed"
+                  ? COPY.searchSummaryFeed
+                  : COPY.searchSummarySaved}
+            </p>
 
-            <ArticleList items={searchResults} emptyMessage={COPY.searchEmpty} />
+            {searchKeyword.trim() ? (
+              <ArticleList items={searchResults} emptyMessage={COPY.searchEmpty} />
+            ) : (
+              <EmptyState message={COPY.searchIdle} />
+            )}
           </article>
 
           <article className="panel glass-card" id="capture">
@@ -511,7 +549,11 @@ export default function HomePage() {
               <p>{COPY.savedLibraryHint}</p>
             </div>
 
-            <ArticleList items={savedNews} emptyMessage={COPY.savedEmpty} />
+            {isSavedAvailable ? (
+              <ArticleList items={savedNews} emptyMessage={COPY.savedEmpty} />
+            ) : (
+              <EmptyState message={COPY.savedUnavailable} />
+            )}
           </article>
         </section>
       </section>
@@ -582,9 +624,15 @@ function ArticleList({ items, emptyMessage }) {
           <div className="article-meta">
             <span className="source-chip">{article.source || COPY.sourceFallback}</span>
             <span>
-              {article.created_at
-                ? formatDateTime(article.created_at)
-                : formatDateTime(article.publishedAt)}
+              {article.searchBucket
+                ? `${article.searchBucket} · ${
+                    article.created_at
+                      ? formatDateTime(article.created_at)
+                      : formatDateTime(article.publishedAt)
+                  }`
+                : article.created_at
+                  ? formatDateTime(article.created_at)
+                  : formatDateTime(article.publishedAt)}
             </span>
           </div>
 

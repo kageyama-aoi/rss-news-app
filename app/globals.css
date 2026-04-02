@@ -260,6 +260,14 @@ a {
   min-width: 220px;
 }
 
+.hero-status-note,
+.search-summary {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -395,9 +403,44 @@ a {
 
 .search-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   margin-top: 18px;
+}
+
+.search-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.scope-chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.scope-chip:hover,
+.scope-chip:focus-visible {
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.scope-chip.active {
+  border-color: rgba(0, 113, 227, 0.18);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .search-field,
