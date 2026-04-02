@@ -11,8 +11,7 @@ const notoSansJp = Noto_Sans_JP({
 
 export const metadata = {
   title: "News Hub",
-  description:
-    "RSSニュースを取得、要約、保存、検索できるApple HIGベースのニュースワークスペース"
+  description: "RSSニュースを読む、残す、整理するためのニュースワークスペース"
 };
 
 export default function RootLayout({ children }) {
