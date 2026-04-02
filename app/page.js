@@ -1,6 +1,56 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+const COPY = {
+  appEyebrow: "Curated RSS Workspace",
+  heading: "News Hub",
+  description:
+    "取得、要約、保存、検索をひとつの画面にまとめたRSSニュースワークスペースです。Apple Human Interface Guidelinesの階層性、余白、素材感、操作の明快さを意識して再設計しています。",
+  fetchNews: "最新を取得",
+  fetchNewsLoading: "取得中...",
+  syncSaved: "保存済みを同期",
+  syncSavedLoading: "同期中...",
+  lastUpdated: "最終更新",
+  latestFeed: "最新フィード",
+  latestFeedHint: "ソース単位で整理した最新ニュース",
+  savedLibrary: "保存ライブラリ",
+  savedLibraryHint: "あとで見返す記事を保管",
+  searchTitle: "保存済み検索",
+  searchDescription:
+    "保存済み記事のタイトルを検索します。主要導線として常に見つけやすい位置に配置しています。",
+  searchPlaceholder: "タイトルで検索",
+  searchAction: "検索",
+  searchLoading: "検索中...",
+  clearAction: "クリア",
+  manualTitle: "手動保存",
+  manualDescription:
+    "URLとタイトルを直接入力して保存できます。入力項目は最小限に絞り、軽い操作感を優先しています。",
+  manualTitlePlaceholder: "記事タイトル",
+  manualUrlPlaceholder: "https://example.com/article",
+  manualSourcePlaceholder: "ソース名",
+  manualSaveAction: "手動保存",
+  manualSaveLoading: "保存中...",
+  defaultSource: "Manual Save",
+  summarizeAction: "要約",
+  summarizeLoading: "要約中...",
+  saveAction: "保存",
+  saveLoading: "保存中...",
+  openAction: "開く",
+  searchEmpty: "検索結果はまだありません。",
+  fetchedEmpty: "ニュースを取得するとここに表示されます。",
+  savedEmpty: "保存済みニュースはまだありません。",
+  noSummary: "要約はまだありません。",
+  unknownDate: "日時不明",
+  sourceFallback: "その他",
+  liveStatusIdle: "準備完了",
+  liveStatusBusy: "更新中",
+  sectionOverview: "概要",
+  sectionSearch: "検索",
+  sectionCapture: "保存",
+  sectionFeed: "フィード",
+  sectionLibrary: "ライブラリ"
+};
 
 export default function HomePage() {
   const [news, setNews] = useState([]);
@@ -9,7 +59,7 @@ export default function HomePage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [manualTitle, setManualTitle] = useState("");
   const [manualUrl, setManualUrl] = useState("");
-  const [manualSource, setManualSource] = useState("Manual Save");
+  const [manualSource, setManualSource] = useState(COPY.defaultSource);
   const [loading, setLoading] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -25,6 +75,16 @@ export default function HomePage() {
   const [fetchedAt, setFetchedAt] = useState(null);
 
   const groupedNews = useMemo(() => groupBySource(news), [news]);
+  const sourceCount = Object.keys(groupedNews).length;
+  const activeStatus =
+    loading || savedLoading || searchLoading || manualSaveLoading
+      ? COPY.liveStatusBusy
+      : COPY.liveStatusIdle;
+
+  useEffect(() => {
+    loadNews();
+    loadSavedNews();
+  }, []);
 
   const loadNews = async () => {
     setLoading(true);
@@ -41,7 +101,7 @@ export default function HomePage() {
       setNews(data);
       setFetchedAt(new Date().toISOString());
     } catch (err) {
-      setError(err.message || "不明なエラーが発生しました。");
+      setError(err.message || "予期しないエラーが発生しました。");
     } finally {
       setLoading(false);
     }
@@ -95,8 +155,14 @@ export default function HomePage() {
     }
   };
 
+  const clearSearch = () => {
+    setSearchKeyword("");
+    setSearchResults([]);
+    setSearchError("");
+  };
+
   const summarizeTitle = async (article) => {
-    const key = `${article.source}-${article.link}`;
+    const key = getArticleKey(article);
 
     setSummaryLoadingMap((current) => ({
       ...current,
@@ -135,13 +201,12 @@ export default function HomePage() {
   };
 
   const saveNews = async (article) => {
-    const key = `${article.source}-${article.link}`;
+    const key = getArticleKey(article);
 
     setSaveLoadingMap((current) => ({
       ...current,
       [key]: true
     }));
-
     setSaveMessageMap((current) => ({
       ...current,
       [key]: ""
@@ -191,7 +256,7 @@ export default function HomePage() {
 
     try {
       if (!manualTitle.trim() || !manualUrl.trim()) {
-        throw new Error("タイトルと URL を入力してください。");
+        throw new Error("タイトルとURLを入力してください。");
       }
 
       const response = await fetch("/api/news/save", {
@@ -202,7 +267,7 @@ export default function HomePage() {
         body: JSON.stringify({
           title: manualTitle.trim(),
           link: manualUrl.trim(),
-          source: manualSource.trim() || "Manual Save",
+          source: manualSource.trim() || COPY.defaultSource,
           summary: ""
         })
       });
@@ -224,293 +289,343 @@ export default function HomePage() {
   };
 
   return (
-    <main style={styles.page}>
-      <section style={styles.shell}>
-        <header style={styles.hero}>
-          <div style={styles.heroText}>
-            <div style={styles.eyebrow}>
-              <Icon name="rss_feed" />
-              <span>News Hub</span>
+    <main className="app-shell">
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
+
+      <section className="workspace">
+        <nav className="section-nav glass-card" aria-label="ページ内ナビゲーション">
+          <a href="#overview">{COPY.sectionOverview}</a>
+          <a href="#search">{COPY.sectionSearch}</a>
+          <a href="#capture">{COPY.sectionCapture}</a>
+          <a href="#feed">{COPY.sectionFeed}</a>
+          <a href="#library">{COPY.sectionLibrary}</a>
+        </nav>
+
+        <header className="hero-card glass-card" id="overview">
+          <div className="hero-copy">
+            <p className="eyebrow">{COPY.appEyebrow}</p>
+            <div className="hero-title-row">
+              <h1>{COPY.heading}</h1>
+              <span className={`status-pill ${activeStatus === COPY.liveStatusBusy ? "busy" : ""}`}>
+                <span className="status-dot" />
+                {activeStatus}
+              </span>
             </div>
-            <h1 style={styles.heading}>RSSニュースアプリ</h1>
-            <p style={styles.description}>
-              Google 公開の Material Symbols を使って、一覧の視認性と操作性をまとめて改善しています。
-              RSS 追加は `lib/rss-feeds.js` に定義を足すだけです。
-            </p>
-            {fetchedAt ? (
-              <p style={styles.infoText}>
-                <Icon name="schedule" />
-                <span>最終取得: {formatDateTime(fetchedAt)}</span>
-              </p>
-            ) : null}
+            <p className="hero-description">{COPY.description}</p>
+
+            <div className="hero-meta">
+              <InfoPill label="Feed" value={`${news.length} items`} />
+              <InfoPill label="Source" value={`${sourceCount} feeds`} />
+              <InfoPill label="Saved" value={`${savedNews.length} items`} />
+              <InfoPill
+                label={COPY.lastUpdated}
+                value={fetchedAt ? formatDateTime(fetchedAt) : COPY.unknownDate}
+              />
+            </div>
           </div>
 
-          <div style={styles.heroActions}>
-            <button onClick={loadNews} style={styles.primaryButton} disabled={loading}>
-              <Icon name="download" />
-              <span>{loading ? "取得中..." : "ニュース取得"}</span>
+          <div className="hero-toolbar">
+            <button className="button button-primary" onClick={loadNews} disabled={loading}>
+              <ToolbarIcon name="arrow.down.circle.fill" />
+              <span>{loading ? COPY.fetchNewsLoading : COPY.fetchNews}</span>
             </button>
             <button
+              className="button button-secondary"
               onClick={loadSavedNews}
-              style={styles.secondaryButtonStrong}
               disabled={savedLoading}
             >
-              <Icon name="bookmarks" />
-              <span>{savedLoading ? "読込中..." : "保存済み取得"}</span>
+              <ToolbarIcon name="bookmark.circle" />
+              <span>{savedLoading ? COPY.syncSavedLoading : COPY.syncSaved}</span>
             </button>
           </div>
         </header>
 
-        {error ? <p style={styles.error}>{error}</p> : null}
-        {savedError ? <p style={styles.error}>{savedError}</p> : null}
+        {(error || savedError) && (
+          <section className="message-strip error-strip glass-card" aria-live="polite">
+            {error ? <p>{error}</p> : null}
+            {savedError ? <p>{savedError}</p> : null}
+          </section>
+        )}
 
-        <div style={styles.topGrid}>
-          <section style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={styles.cardTitle}>
-                <Icon name="search" />
-                <h2 style={styles.cardHeading}>検索</h2>
+        <section className="control-grid">
+          <article className="panel glass-card" id="search">
+            <div className="panel-header">
+              <div>
+                <p className="section-kicker">Search</p>
+                <h2>{COPY.searchTitle}</h2>
               </div>
             </div>
-            <p style={styles.helpText}>
-              保存済みニュースのタイトルを部分一致で検索します。
-            </p>
-            <div style={styles.searchRow}>
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(event) => setSearchKeyword(event.target.value)}
-                placeholder="タイトル検索"
-                style={styles.input}
-              />
+
+            <p className="panel-description">{COPY.searchDescription}</p>
+
+            <div className="search-bar" role="search">
+              <label className="search-field">
+                <SearchIcon />
+                <input
+                  type="search"
+                  value={searchKeyword}
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      searchSavedNews();
+                    }
+                  }}
+                  placeholder={COPY.searchPlaceholder}
+                />
+              </label>
               <button
+                className="button button-secondary"
                 onClick={searchSavedNews}
-                style={styles.secondaryButton}
                 disabled={searchLoading}
               >
-                <Icon name="manage_search" />
-                <span>{searchLoading ? "検索中..." : "検索"}</span>
+                <span>{searchLoading ? COPY.searchLoading : COPY.searchAction}</span>
+              </button>
+              <button
+                className="button button-tertiary"
+                onClick={clearSearch}
+                disabled={!searchKeyword && searchResults.length === 0}
+              >
+                <span>{COPY.clearAction}</span>
               </button>
             </div>
-            {searchError ? <p style={styles.error}>{searchError}</p> : null}
-            {renderCompactArticleList(searchResults, "検索結果はまだありません。")}
-          </section>
 
-          <section style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={styles.cardTitle}>
-                <Icon name="bookmark_add" />
-                <h2 style={styles.cardHeading}>URLとタイトルを保存</h2>
+            {searchError ? <p className="inline-error">{searchError}</p> : null}
+
+            <ArticleList items={searchResults} emptyMessage={COPY.searchEmpty} />
+          </article>
+
+          <article className="panel glass-card" id="capture">
+            <div className="panel-header">
+              <div>
+                <p className="section-kicker">Capture</p>
+                <h2>{COPY.manualTitle}</h2>
               </div>
             </div>
-            <div style={styles.formGrid}>
-              <input
-                type="text"
-                value={manualTitle}
-                onChange={(event) => setManualTitle(event.target.value)}
-                placeholder="ニュースタイトル"
-                style={styles.input}
-              />
-              <input
-                type="url"
-                value={manualUrl}
-                onChange={(event) => setManualUrl(event.target.value)}
-                placeholder="https://example.com/article"
-                style={styles.input}
-              />
-              <input
-                type="text"
-                value={manualSource}
-                onChange={(event) => setManualSource(event.target.value)}
-                placeholder="保存元名"
-                style={styles.input}
-              />
+
+            <p className="panel-description">{COPY.manualDescription}</p>
+
+            <div className="form-grid">
+              <label className="field">
+                <span>タイトル</span>
+                <input
+                  type="text"
+                  value={manualTitle}
+                  onChange={(event) => setManualTitle(event.target.value)}
+                  placeholder={COPY.manualTitlePlaceholder}
+                />
+              </label>
+              <label className="field">
+                <span>URL</span>
+                <input
+                  type="url"
+                  value={manualUrl}
+                  onChange={(event) => setManualUrl(event.target.value)}
+                  placeholder={COPY.manualUrlPlaceholder}
+                />
+              </label>
+              <label className="field">
+                <span>ソース</span>
+                <input
+                  type="text"
+                  value={manualSource}
+                  onChange={(event) => setManualSource(event.target.value)}
+                  placeholder={COPY.manualSourcePlaceholder}
+                />
+              </label>
             </div>
-            <div style={styles.formActions}>
+
+            <div className="panel-actions">
               <button
+                className="button button-primary"
                 onClick={saveManualNews}
-                style={styles.primaryButton}
                 disabled={manualSaveLoading}
               >
-                <Icon name="save" />
-                <span>{manualSaveLoading ? "保存中..." : "手動保存"}</span>
+                <ToolbarIcon name="square.and.arrow.down" />
+                <span>{manualSaveLoading ? COPY.manualSaveLoading : COPY.manualSaveAction}</span>
               </button>
             </div>
-            {manualSaveMessage ? <p style={styles.saveMessage}>{manualSaveMessage}</p> : null}
-          </section>
-        </div>
 
-        <details open style={styles.panel}>
-          <summary style={styles.panelSummary}>
-            <div style={styles.summaryInner}>
-              <div style={styles.cardTitle}>
-                <Icon name="newspaper" />
-                <span>取得したニュース ({news.length})</span>
+            {manualSaveMessage ? (
+              <p className="inline-success" aria-live="polite">
+                {manualSaveMessage}
+              </p>
+            ) : null}
+          </article>
+        </section>
+
+        <section className="content-grid">
+          <article className="content-panel glass-card" id="feed">
+            <div className="content-panel-header">
+              <div>
+                <p className="section-kicker">Live Feed</p>
+                <h2>{COPY.latestFeed}</h2>
               </div>
-              <div style={styles.summaryHint}>
-                <Icon name="expand_more" />
-                <span>開閉</span>
-              </div>
+              <p>{COPY.latestFeedHint}</p>
             </div>
-          </summary>
-          <div style={styles.panelBody}>
-            {renderGroupedFetchedNews(
-              groupedNews,
-              summaryLoadingMap,
-              saveLoadingMap,
-              summaryMap,
-              saveMessageMap,
-              summarizeTitle,
-              saveNews
+
+            {Object.keys(groupedNews).length === 0 ? (
+              <EmptyState message={COPY.fetchedEmpty} />
+            ) : (
+              <div className="source-stack">
+                {Object.entries(groupedNews).map(([source, articles]) => (
+                  <details className="source-group" key={source} open>
+                    <summary>
+                      <div>
+                        <h3>{source}</h3>
+                        <p>{articles.length} items</p>
+                      </div>
+                      <ChevronIcon />
+                    </summary>
+
+                    <div className="source-body">
+                      {articles.map((article) => {
+                        const key = getArticleKey(article);
+
+                        return (
+                          <FetchedArticleRow
+                            article={article}
+                            key={key}
+                            onSave={() => saveNews(article)}
+                            onSummarize={() => summarizeTitle(article)}
+                            saveLoading={Boolean(saveLoadingMap[key])}
+                            summary={summaryMap[key]}
+                            summaryLoading={Boolean(summaryLoadingMap[key])}
+                            saveMessage={saveMessageMap[key]}
+                          />
+                        );
+                      })}
+                    </div>
+                  </details>
+                ))}
+              </div>
             )}
-          </div>
-        </details>
+          </article>
 
-        <details style={styles.panel}>
-          <summary style={styles.panelSummary}>
-            <div style={styles.summaryInner}>
-              <div style={styles.cardTitle}>
-                <Icon name="inventory_2" />
-                <span>保存済みニュース ({savedNews.length})</span>
+          <article className="content-panel glass-card" id="library">
+            <div className="content-panel-header">
+              <div>
+                <p className="section-kicker">Library</p>
+                <h2>{COPY.savedLibrary}</h2>
               </div>
-              <div style={styles.summaryHint}>
-                <Icon name="expand_more" />
-                <span>開閉</span>
-              </div>
+              <p>{COPY.savedLibraryHint}</p>
             </div>
-          </summary>
-          <div style={styles.panelBody}>
-            {renderCompactArticleList(savedNews, "保存済みニュースはまだありません。")}
-          </div>
-        </details>
+
+            <ArticleList items={savedNews} emptyMessage={COPY.savedEmpty} />
+          </article>
+        </section>
       </section>
     </main>
   );
 }
 
-function renderGroupedFetchedNews(
-  groupedNews,
-  summaryLoadingMap,
-  saveLoadingMap,
-  summaryMap,
-  saveMessageMap,
-  summarizeTitle,
-  saveNews
-) {
-  const groups = Object.entries(groupedNews);
-
-  if (groups.length === 0) {
-    return <p style={styles.emptyText}>取得したニュースはまだありません。</p>;
-  }
-
-  return groups.map(([source, articles]) => (
-    <details key={source} style={styles.groupSection} open>
-      <summary style={styles.groupSummary}>
-        <div style={styles.groupHeader}>
-          <div style={styles.cardTitle}>
-            <Icon name="folder_open" />
-            <h3 style={styles.groupHeading}>{source}</h3>
-          </div>
-          <div style={styles.groupHeaderRight}>
-            <span style={styles.groupCount}>{articles.length}件</span>
-            <div style={styles.summaryHint}>
-              <Icon name="expand_more" />
-              <span>開閉</span>
-            </div>
-          </div>
+function FetchedArticleRow({
+  article,
+  onSave,
+  onSummarize,
+  saveLoading,
+  summary,
+  summaryLoading,
+  saveMessage
+}) {
+  return (
+    <article className="article-row">
+      <div className="article-copy">
+        <div className="article-meta">
+          <span className="source-chip">{article.source || COPY.sourceFallback}</span>
+          <span>{formatDateTime(article.publishedAt)}</span>
         </div>
-      </summary>
 
-      <div style={styles.groupBody}>
-        <ul style={styles.compactList}>
-          {articles.map((article) => {
-            const key = `${article.source}-${article.link}`;
+        <a href={article.link} target="_blank" rel="noreferrer" className="article-link">
+          {article.title}
+        </a>
 
-            return (
-              <li key={key} style={styles.compactItem}>
-                <div style={styles.itemMain}>
-                  <div style={styles.metaRow}>
-                    <span style={styles.badge}>{article.source}</span>
-                    <span style={styles.metaText}>
-                      公開: {formatDateTime(article.publishedAt)}
-                    </span>
-                  </div>
-                  <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-                    {article.title}
-                  </a>
-                  {summaryMap[key] ? (
-                    <p style={styles.summaryText}>{summaryMap[key]}</p>
-                  ) : null}
-                  {saveMessageMap[key] ? (
-                    <p style={styles.saveMessage}>{saveMessageMap[key]}</p>
-                  ) : null}
-                </div>
+        <p className={`article-summary ${summary ? "filled" : ""}`}>
+          {summary || COPY.noSummary}
+        </p>
 
-                <div style={styles.itemActions}>
-                  <button
-                    onClick={() => summarizeTitle(article)}
-                    style={styles.secondaryButton}
-                    disabled={summaryLoadingMap[key]}
-                  >
-                    <Icon name="auto_awesome" />
-                    <span>{summaryLoadingMap[key] ? "要約中..." : "AI要約"}</span>
-                  </button>
-                  <button
-                    onClick={() => saveNews(article)}
-                    style={styles.secondaryButton}
-                    disabled={saveLoadingMap[key]}
-                  >
-                    <Icon name="bookmark" />
-                    <span>{saveLoadingMap[key] ? "保存中..." : "保存"}</span>
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        {saveMessage ? <p className="inline-success">{saveMessage}</p> : null}
       </div>
-    </details>
-  ));
+
+      <div className="article-actions">
+        <a
+          className="button button-tertiary"
+          href={article.link}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ToolbarIcon name="arrow.up.forward" />
+          <span>{COPY.openAction}</span>
+        </a>
+        <button className="button button-tertiary" onClick={onSummarize} disabled={summaryLoading}>
+          <ToolbarIcon name="sparkles" />
+          <span>{summaryLoading ? COPY.summarizeLoading : COPY.summarizeAction}</span>
+        </button>
+        <button className="button button-secondary" onClick={onSave} disabled={saveLoading}>
+          <ToolbarIcon name="bookmark" />
+          <span>{saveLoading ? COPY.saveLoading : COPY.saveAction}</span>
+        </button>
+      </div>
+    </article>
+  );
 }
 
-function renderCompactArticleList(items, emptyMessage) {
+function ArticleList({ items, emptyMessage }) {
   if (items.length === 0) {
-    return <p style={styles.emptyText}>{emptyMessage}</p>;
+    return <EmptyState message={emptyMessage} />;
   }
 
   return (
-    <ul style={styles.compactList}>
+    <div className="article-list">
       {items.map((article) => (
-        <li key={article.id || `${article.source}-${article.link}`} style={styles.compactItem}>
-          <div style={styles.itemMain}>
-            <div style={styles.metaRow}>
-              <span style={styles.badge}>{article.source}</span>
-              <span style={styles.metaText}>
-                {article.created_at
-                  ? `保存: ${formatDateTime(article.created_at)}`
-                  : `公開: ${formatDateTime(article.publishedAt)}`}
-              </span>
-            </div>
-
-            <a href={article.link} target="_blank" rel="noreferrer" style={styles.link}>
-              {article.title}
-            </a>
-
-            {article.summary ? (
-              <p style={styles.summaryText}>{article.summary}</p>
-            ) : (
-              <p style={styles.summaryEmpty}>要約はまだありません。</p>
-            )}
+        <article className="library-item" key={article.id || getArticleKey(article)}>
+          <div className="article-meta">
+            <span className="source-chip">{article.source || COPY.sourceFallback}</span>
+            <span>
+              {article.created_at
+                ? formatDateTime(article.created_at)
+                : formatDateTime(article.publishedAt)}
+            </span>
           </div>
-        </li>
+
+          <a href={article.link} target="_blank" rel="noreferrer" className="article-link">
+            {article.title}
+          </a>
+
+          <p className={`article-summary ${article.summary ? "filled" : ""}`}>
+            {article.summary || COPY.noSummary}
+          </p>
+        </article>
       ))}
-    </ul>
+    </div>
   );
+}
+
+function EmptyState({ message }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-orb" />
+      <p>{message}</p>
+    </div>
+  );
+}
+
+function InfoPill({ label, value }) {
+  return (
+    <div className="info-pill">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function getArticleKey(article) {
+  return `${article.source}-${article.link}`;
 }
 
 function groupBySource(items) {
   return items.reduce((groups, article) => {
-    const source = article.source || "その他";
+    const source = article.source || COPY.sourceFallback;
 
     if (!groups[source]) {
       groups[source] = [];
@@ -523,13 +638,13 @@ function groupBySource(items) {
 
 function formatDateTime(value) {
   if (!value) {
-    return "日時不明";
+    return COPY.unknownDate;
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "日時不明";
+    return COPY.unknownDate;
   }
 
   return new Intl.DateTimeFormat("ja-JP", {
@@ -541,314 +656,67 @@ function formatDateTime(value) {
   }).format(date);
 }
 
-function Icon({ name }) {
-  return <span className="material-symbols-outlined" style={styles.icon}>{name}</span>;
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16 16l4 4" />
+    </svg>
+  );
 }
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    margin: 0,
-    padding: "24px 14px 40px",
-    background:
-      "radial-gradient(circle at top left, #dbeafe 0%, #eef3f8 35%, #f8fafc 100%)"
-  },
-  shell: {
-    maxWidth: "1180px",
-    margin: "0 auto"
-  },
-  hero: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) auto",
-    gap: "18px",
-    alignItems: "start",
-    padding: "22px",
-    background:
-      "linear-gradient(135deg, rgba(255,255,255,0.98), rgba(239,246,255,0.96))",
-    borderRadius: "18px",
-    boxShadow: "0 16px 36px rgba(15, 23, 42, 0.10)"
-  },
-  heroText: {
-    minWidth: 0
-  },
-  eyebrow: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    marginBottom: "10px",
-    padding: "6px 10px",
-    borderRadius: "999px",
-    backgroundColor: "#dbeafe",
-    color: "#1d4ed8",
-    fontSize: "13px",
-    fontWeight: 700
-  },
-  heading: {
-    margin: 0,
-    fontSize: "34px",
-    lineHeight: 1.15
-  },
-  description: {
-    marginTop: "12px",
-    marginBottom: 0,
-    color: "#475569",
-    lineHeight: 1.7,
-    maxWidth: "760px"
-  },
-  heroActions: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-    justifyContent: "flex-end"
-  },
-  topGrid: {
-    display: "grid",
-    gridTemplateColumns: "1.2fr 1fr",
-    gap: "16px",
-    marginTop: "16px"
-  },
-  card: {
-    padding: "18px",
-    backgroundColor: "#ffffff",
-    borderRadius: "16px",
-    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)"
-  },
-  cardHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "10px"
-  },
-  cardTitle: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px"
-  },
-  cardHeading: {
-    margin: 0,
-    fontSize: "18px"
-  },
-  infoText: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    margin: "12px 4px 0",
-    color: "#475569",
-    fontSize: "14px"
-  },
-  panel: {
-    marginTop: "16px",
-    border: "1px solid #dbe4f0",
-    borderRadius: "16px",
-    overflow: "hidden",
-    backgroundColor: "#ffffff",
-    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.04)"
-  },
-  panelSummary: {
-    cursor: "pointer",
-    padding: "14px 16px",
-    listStyle: "none",
-    backgroundColor: "#f4f8ff"
-  },
-  summaryInner: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between"
-  },
-  summaryHint: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "4px",
-    color: "#64748b",
-    fontSize: "12px",
-    fontWeight: 700
-  },
-  panelBody: {
-    padding: "14px 16px"
-  },
-  searchRow: {
-    display: "flex",
-    gap: "10px",
-    flexWrap: "wrap",
-    marginBottom: "10px"
-  },
-  formGrid: {
-    display: "grid",
-    gap: "10px"
-  },
-  formActions: {
-    marginTop: "12px",
-    display: "flex",
-    justifyContent: "flex-start"
-  },
-  helpText: {
-    marginTop: 0,
-    marginBottom: "10px",
-    color: "#475569",
-    lineHeight: 1.55,
-    fontSize: "14px"
-  },
-  input: {
-    minWidth: "220px",
-    padding: "12px 14px",
-    border: "1px solid #d1d9e6",
-    borderRadius: "10px",
-    fontSize: "14px"
-  },
-  primaryButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "11px 16px",
-    border: "none",
-    borderRadius: "10px",
-    backgroundColor: "#2563eb",
-    color: "#ffffff",
-    cursor: "pointer",
-    fontWeight: 700
-  },
-  secondaryButtonStrong: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "11px 16px",
-    border: "1px solid #bfdbfe",
-    borderRadius: "10px",
-    backgroundColor: "#eff6ff",
-    color: "#1d4ed8",
-    cursor: "pointer",
-    fontWeight: 700
-  },
-  secondaryButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "8px 12px",
-    border: "1px solid #cbd5e1",
-    borderRadius: "10px",
-    backgroundColor: "#ffffff",
-    color: "#0f172a",
-    cursor: "pointer",
-    whiteSpace: "nowrap"
-  },
-  error: {
-    marginTop: "14px",
-    color: "#dc2626"
-  },
-  groupSection: {
-    marginBottom: "12px",
-    border: "1px solid #dbe4f0",
-    borderRadius: "12px",
-    backgroundColor: "#ffffff"
-  },
-  groupSummary: {
-    cursor: "pointer",
-    listStyle: "none",
-    padding: "10px 12px",
-    backgroundColor: "#f8fbff"
-  },
-  groupBody: {
-    padding: "0 12px 12px"
-  },
-  groupHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "12px"
-  },
-  groupHeaderRight: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "10px"
-  },
-  groupHeading: {
-    margin: 0,
-    color: "#1d4ed8",
-    fontSize: "16px"
-  },
-  groupCount: {
-    color: "#475569",
-    fontSize: "13px"
-  },
-  compactList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "grid",
-    gap: "10px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))"
-  },
-  compactItem: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) auto",
-    gap: "12px",
-    alignItems: "start",
-    padding: "12px 14px",
-    border: "1px solid #e2e8f0",
-    borderRadius: "12px",
-    backgroundColor: "#f8fafc"
-  },
-  itemMain: {
-    minWidth: 0
-  },
-  itemActions: {
-    display: "flex",
-    gap: "8px",
-    flexWrap: "wrap",
-    justifyContent: "flex-end"
-  },
-  metaRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px 12px",
-    alignItems: "center",
-    marginBottom: "8px"
-  },
-  badge: {
-    display: "inline-block",
-    padding: "4px 9px",
-    borderRadius: "999px",
-    backgroundColor: "#dbeafe",
-    color: "#1d4ed8",
-    fontSize: "12px",
-    fontWeight: 700
-  },
-  metaText: {
-    color: "#64748b",
-    fontSize: "13px"
-  },
-  link: {
-    color: "#0f172a",
-    textDecoration: "none",
-    lineHeight: 1.5,
-    display: "block",
-    fontWeight: 700
-  },
-  summaryText: {
-    marginTop: "8px",
-    marginBottom: 0,
-    color: "#334155",
-    lineHeight: 1.55,
-    fontSize: "14px"
-  },
-  summaryEmpty: {
-    marginTop: "8px",
-    marginBottom: 0,
-    color: "#64748b",
-    fontSize: "14px"
-  },
-  saveMessage: {
-    marginTop: "8px",
-    marginBottom: 0,
-    color: "#047857",
-    fontSize: "14px"
-  },
-  emptyText: {
-    margin: 0,
-    color: "#64748b"
-  },
-  icon: {
-    fontSize: "20px",
-    lineHeight: 1
-  }
-};
+function ChevronIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className="chevron-icon">
+      <path d="M6 8l4 4 4-4" />
+    </svg>
+  );
+}
+
+function ToolbarIcon({ name }) {
+  const icons = {
+    bookmark: (
+      <path d="M7 4.75A1.75 1.75 0 0 1 8.75 3h6.5A1.75 1.75 0 0 1 17 4.75V19l-5-3-5 3V4.75Z" />
+    ),
+    "bookmark.circle": (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M10 8.25A1.25 1.25 0 0 1 11.25 7h1.5A1.25 1.25 0 0 1 14 8.25V15l-2-1.3L10 15V8.25Z" />
+      </>
+    ),
+    "arrow.down.circle.fill": (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v8" />
+        <path d="M8.75 12.75 12 16l3.25-3.25" />
+      </>
+    ),
+    "square.and.arrow.down": (
+      <>
+        <path d="M7 12.75V17h10v-4.25" />
+        <path d="M12 5v9" />
+        <path d="M8.75 10.75 12 14l3.25-3.25" />
+      </>
+    ),
+    "arrow.up.forward": (
+      <>
+        <path d="M14 6h4v4" />
+        <path d="M10 14 18 6" />
+        <path d="M18 13.5V18H6V6h4.5" />
+      </>
+    ),
+    sparkles: (
+      <>
+        <path d="M12 4l1.1 3.25L16.5 8.5l-3.4 1.25L12 13l-1.1-3.25L7.5 8.5l3.4-1.25L12 4Z" />
+        <path d="M18 14l.55 1.45L20 16l-1.45.55L18 18l-.55-1.45L16 16l1.45-.55L18 14Z" />
+        <path d="M6 14l.8 2.2L9 17l-2.2.8L6 20l-.8-2.2L3 17l2.2-.8L6 14Z" />
+      </>
+    )
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="toolbar-icon">
+      {icons[name]}
+    </svg>
+  );
+}
