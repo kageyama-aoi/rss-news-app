@@ -464,6 +464,10 @@ export default function HomePage() {
       <div className="ambient ambient-two" />
       <section className="workspace">
         <nav className="section-nav glass-card" aria-label="ページ内ナビゲーション">
+          <div className="sidebar-head">
+            <p>Workspace</p>
+            <span>読む、残す、絞る</span>
+          </div>
           <a href="#overview">概要</a>
           <a href="#search">検索</a>
           <a href="#filters">整理</a>
@@ -579,10 +583,10 @@ export default function HomePage() {
               <div className="saved-view-list">
                 {savedViews.map((view) => (
                   <div className="saved-view-chip" key={view.id}>
-                    <button type="button" onClick={() => applySavedView(view)}>
+                    <button type="button" onClick={() => applySavedView(view)} title={`保存ビュー: ${view.name}`}>
                       {view.name}
                     </button>
-                    <button type="button" onClick={() => removeSavedView(view.id)}>
+                    <button type="button" onClick={() => removeSavedView(view.id)} title={`${view.name} を削除`}>
                       削除
                     </button>
                   </div>
@@ -628,16 +632,16 @@ export default function HomePage() {
                     const count = visibleFeed.filter((article) => article.source === source).length;
 
                     return (
-                      <div className="source-control" key={source}>
+                      <div className="source-control" key={source} title={`${source} の表示設定`}>
                         <div>
                           <strong>{source}</strong>
                           <p>{count} items</p>
                         </div>
                         <div className="source-actions">
-                          <button type="button" className={`mini-chip ${prefs.enabled ? "active" : ""}`} onClick={() => toggleSourceEnabled(source)}>
+                          <button type="button" className={`mini-chip ${prefs.enabled ? "active" : ""}`} onClick={() => toggleSourceEnabled(source)} title={`${source} の表示切替`}>
                             {prefs.enabled ? "表示" : "非表示"}
                           </button>
-                          <button type="button" className={`mini-chip ${prefs.muted ? "muted" : ""}`} onClick={() => toggleSourceMuted(source)}>
+                          <button type="button" className={`mini-chip ${prefs.muted ? "muted" : ""}`} onClick={() => toggleSourceMuted(source)} title={`${source} のミュート切替`}>
                             {prefs.muted ? "ミュート解除" : "ミュート"}
                           </button>
                         </div>
@@ -694,20 +698,21 @@ export default function HomePage() {
                   <span className="source-chip">{selectedArticle.source || COPY.sourceFallback}</span>
                   <span>{formatDateTime(selectedArticle.created_at || selectedArticle.publishedAt)}</span>
                 </div>
-                <a href={selectedArticle.link} target="_blank" rel="noreferrer" className="article-link detail-link">
+                <a href={selectedArticle.link} target="_blank" rel="noreferrer" className="article-link detail-link" title={selectedArticle.title}>
                   {selectedArticle.title}
                 </a>
                 <div className="article-actions">
-                  <button className="button button-tertiary" onClick={() => toggleRead(selectedArticle)}>
+                  <button className="button button-tertiary" onClick={() => toggleRead(selectedArticle)} title="既読状態を切り替え">
                     {readMap[getArticleKey(selectedArticle)] ? COPY.markUnread : COPY.markRead}
                   </button>
-                  <button className="button button-tertiary" onClick={() => toggleLater(selectedArticle)}>
+                  <button className="button button-tertiary" onClick={() => toggleLater(selectedArticle)} title="後で読むキューに追加または解除">
                     {laterMap[getArticleKey(selectedArticle)] ? COPY.removeLater : COPY.addLater}
                   </button>
                   <button
                     className="button button-secondary"
                     onClick={() => summarizeTitle(selectedArticle)}
                     disabled={summaryLoadingMap[getArticleKey(selectedArticle)]}
+                    title="タイトルから要点を生成"
                   >
                     {summaryLoadingMap[getArticleKey(selectedArticle)] ? COPY.summarizeLoading : COPY.summarize}
                   </button>
@@ -751,6 +756,7 @@ export default function HomePage() {
                           type="button"
                           className="topic-item"
                           onClick={() => setSelectedKey(getArticleKey(article))}
+                          title={article.title}
                         >
                           <span>{article.source}</span>
                           <span>{article.title}</span>
@@ -850,6 +856,54 @@ export default function HomePage() {
             )}
           </article>
         </section>
+        {selectedArticle ? (
+          <aside className="mobile-drawer" aria-label="記事詳細ドロワー">
+            <div className="mobile-drawer-header">
+              <div>
+                <p>記事詳細</p>
+                <strong>{selectedArticle.source || COPY.sourceFallback}</strong>
+              </div>
+              <button
+                type="button"
+                className="button button-tertiary mobile-close"
+                onClick={() => setSelectedKey("")}
+                title="詳細を閉じる"
+              >
+                閉じる
+              </button>
+            </div>
+            <a
+              href={selectedArticle.link}
+              target="_blank"
+              rel="noreferrer"
+              className="article-link detail-link"
+              title={selectedArticle.title}
+            >
+              {selectedArticle.title}
+            </a>
+            <p className={`article-summary ${summaryMap[getArticleKey(selectedArticle)] ? "filled" : ""}`}>
+              {summaryMap[getArticleKey(selectedArticle)] || selectedArticle.summary || COPY.noSummary}
+            </p>
+            <div className="article-actions">
+              <button className="button button-tertiary" onClick={() => toggleRead(selectedArticle)}>
+                {readMap[getArticleKey(selectedArticle)] ? COPY.markUnread : COPY.markRead}
+              </button>
+              <button className="button button-tertiary" onClick={() => toggleLater(selectedArticle)}>
+                {laterMap[getArticleKey(selectedArticle)] ? COPY.removeLater : COPY.addLater}
+              </button>
+              <a className="button button-secondary" href={selectedArticle.link} target="_blank" rel="noreferrer">
+                {COPY.open}
+              </a>
+            </div>
+          </aside>
+        ) : null}
+        <nav className="mobile-tabbar" aria-label="モバイルナビゲーション">
+          <a href="#search">検索</a>
+          <a href="#filters">整理</a>
+          <a href="#feed">フィード</a>
+          <a href="#queue">後で読む</a>
+          <a href="#library">保存済み</a>
+        </nav>
       </section>
     </main>
   );
@@ -895,12 +949,12 @@ function FeedArticleRow({
     <article className={`article-row ${readMap[key] ? "read" : ""}`}>
       <div className="article-copy">
         <div className="article-meta">
-          <span className="source-chip">{article.source || COPY.sourceFallback}</span>
+          <span className="source-chip" title={article.source || COPY.sourceFallback}>{article.source || COPY.sourceFallback}</span>
           <span>{formatDateTime(article.publishedAt)}</span>
           {notesMap[key] ? <span className="meta-badge">メモあり</span> : null}
           {laterMap[key] ? <span className="meta-badge">後で読む</span> : null}
         </div>
-        <a href={article.link} target="_blank" rel="noreferrer" className="article-link">
+        <a href={article.link} target="_blank" rel="noreferrer" className="article-link" title={article.title}>
           {article.title}
         </a>
         <p className={`article-summary ${summaryMap[key] ? "filled" : ""}`}>
@@ -909,19 +963,20 @@ function FeedArticleRow({
         {saveMessageMap[key] ? <p className="inline-success">{saveMessageMap[key]}</p> : null}
       </div>
       <div className="article-actions">
-        <button className="button button-tertiary" onClick={() => onSelect(key)}>
+        <button className="button button-tertiary" onClick={() => onSelect(key)} title="右側のワークスペースで詳細を開く">
           {COPY.detail}
         </button>
-        <button className="button button-tertiary" onClick={() => onToggleRead(article)}>
+        <button className="button button-tertiary" onClick={() => onToggleRead(article)} title="既読状態を切り替え">
           {readMap[key] ? COPY.markUnread : COPY.markRead}
         </button>
-        <button className="button button-tertiary" onClick={() => onToggleLater(article)}>
+        <button className="button button-tertiary" onClick={() => onToggleLater(article)} title="後で読むキューに追加または解除">
           {laterMap[key] ? COPY.removeLater : COPY.addLater}
         </button>
         <button
           className="button button-secondary"
           onClick={() => onSummarize(article)}
           disabled={summaryLoadingMap[key]}
+          title="タイトルから要点を生成"
         >
           {summaryLoadingMap[key] ? COPY.summarizeLoading : COPY.summarize}
         </button>
@@ -929,10 +984,11 @@ function FeedArticleRow({
           className="button button-secondary"
           onClick={() => onSave(article)}
           disabled={saveLoadingMap[key] || !savedAvailable}
+          title="保存ライブラリに追加"
         >
           {saveLoadingMap[key] ? COPY.saveLoading : COPY.save}
         </button>
-        <a className="button button-tertiary" href={article.link} target="_blank" rel="noreferrer">
+        <a className="button button-tertiary" href={article.link} target="_blank" rel="noreferrer" title="元記事を開く">
           {COPY.open}
         </a>
       </div>
@@ -953,7 +1009,7 @@ function ArticleList({ items, emptyMessage, laterMap, notesMap, onSelect, readMa
         return (
           <article className={`library-item ${readMap[key] ? "read" : ""}`} key={article.id || key}>
             <div className="article-meta">
-              <span className="source-chip">{article.source || COPY.sourceFallback}</span>
+              <span className="source-chip" title={article.source || COPY.sourceFallback}>{article.source || COPY.sourceFallback}</span>
               <span>
                 {article.searchBucket ? `${article.searchBucket} · ` : ""}
                 {formatDateTime(article.created_at || article.publishedAt)}
@@ -961,17 +1017,17 @@ function ArticleList({ items, emptyMessage, laterMap, notesMap, onSelect, readMa
               {notesMap[key] ? <span className="meta-badge">メモあり</span> : null}
               {laterMap[key] ? <span className="meta-badge">後で読む</span> : null}
             </div>
-            <a href={article.link} target="_blank" rel="noreferrer" className="article-link">
+            <a href={article.link} target="_blank" rel="noreferrer" className="article-link" title={article.title}>
               {article.title}
             </a>
             <p className={`article-summary ${article.summary ? "filled" : ""}`}>
               {article.summary || COPY.noSummary}
             </p>
             <div className="article-actions">
-              <button className="button button-tertiary" onClick={() => onSelect(key)}>
+              <button className="button button-tertiary" onClick={() => onSelect(key)} title="右側のワークスペースで詳細を開く">
                 {COPY.detail}
               </button>
-              <a className="button button-tertiary" href={article.link} target="_blank" rel="noreferrer">
+              <a className="button button-tertiary" href={article.link} target="_blank" rel="noreferrer" title="元記事を開く">
                 {COPY.open}
               </a>
             </div>
