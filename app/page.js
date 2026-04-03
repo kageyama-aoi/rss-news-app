@@ -191,7 +191,7 @@ export default function HomePage() {
           <button
             type="button"
             className={`control-button ${!isFilterCollapsed ? "active" : ""}`}
-            onClick={() => setIsFilterCollapsed((current) => !current)}
+            onClick={() => setFilterCollapsed((current) => !current)}
             title="フィルターを開く"
           >
             ⚙️
@@ -232,7 +232,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="button button-tertiary"
-                  onClick={() => setIsFilterCollapsed((current) => !current)}
+                  onClick={() => setFilterCollapsed((current) => !current)}
                   title="フィルターを閉じる"
                 >
                   ✕
