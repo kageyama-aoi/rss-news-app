@@ -7,10 +7,7 @@ import { useState } from "react";
  */
 export function useUIState() {
   const [activeTab, setActiveTab] = useState("feed");
-  const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
-  const [isSearchCollapsed, setIsSearchCollapsed] = useState(true);
   const [isFilterCollapsed, setIsFilterCollapsed] = useState(true);
-  const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
   const [expandedSources, setExpandedSources] = useState({});
   const [hideShorts, setHideShorts] = useState(true);
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -21,14 +18,8 @@ export function useUIState() {
   return {
     activeTab,
     setActiveTab,
-    isDesktopNavOpen,
-    setIsDesktopNavOpen,
-    isSearchCollapsed,
-    setIsSearchCollapsed,
     isFilterCollapsed,
     setIsFilterCollapsed,
-    isFeedCollapsed,
-    setIsFeedCollapsed,
     expandedSources,
     setExpandedSources,
     hideShorts,

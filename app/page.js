@@ -6,67 +6,38 @@ import { useNewsWorkspace } from "../hooks/use-news-workspace";
 
 export default function HomePage() {
   const {
-    activeTab,
-    setActiveTab,
-    allSources,
+    activeTab, setActiveTab,
+    allSources, sourcePrefs,
     clearSearch,
-    error,
-    expandedSources,
-    fetchedAt,
-    groupTopics,
+    error, savedError, savedLoading,
+    expandedSources, setExpandedSources,
+    groupTopics, setGroupTopics,
     groupedFeed,
-    hideMuted,
-    hideShorts,
-    isFilterCollapsed,
+    hideMuted, setHideMuted,
+    hideShorts, setHideShorts,
+    isFilterCollapsed, setFilterCollapsed,
     isSavedAvailable,
     laterMap,
-    loadNews,
-    loadSavedNews,
+    loadNews, loadSavedNews,
     loading,
-    manualSaveLoading,
-    manualSaveMessage,
-    manualSource,
-    manualTitle,
-    manualUrl,
     notesMap,
     queueItems,
     readMap,
-    saveLoadingMap,
-    saveManualNews,
-    saveMessageMap,
+    saveLoadingMap, saveMessageMap,
     saveNews,
-    savedError,
-    savedLoading,
-    savedViews,
-    searchKeyword,
+    searchKeyword, setSearchKeyword,
     searchResults,
-    searchScope,
-    selectedArticle,
-    selectedNote,
-    setExpandedSources,
-    setFilterCollapsed,
-    setGroupTopics,
-    setHideMuted,
-    setHideShorts,
-    setManualSource,
-    setManualTitle,
-    setManualUrl,
-    setSearchKeyword,
-    setSearchScope,
+    searchScope, setSearchScope,
+    selectedArticle, selectedNote,
     setSelectedKey,
     setUnreadOnly,
-    sourcePrefs,
     summarizeTitle,
-    summaryLoadingMap,
-    summaryMap,
-    toggleLater,
-    toggleRead,
-    toggleSourceEnabled,
-    toggleSourceMuted,
+    summaryLoadingMap, summaryMap,
+    toggleLater, toggleRead,
+    toggleSourceEnabled, toggleSourceMuted,
     unreadCount,
     unreadOnly,
     updateNote,
-    visibleFeed,
     visibleSaved
   } = useNewsWorkspace();
 
@@ -422,36 +393,34 @@ export default function HomePage() {
 /* ── 記事行（コンパクト） ── */
 function ArticleRow({ article, readMap, laterMap, notesMap, onSelect, onToggleRead, onToggleLater }) {
   const key = getArticleKey(article);
+  const isRead = !!readMap[key];
+  const isLater = !!laterMap[key];
+  const hasNote = !!notesMap[key];
+
   return (
-    <article className={`article-row ${readMap[key] ? "is-read" : ""}`}>
-      <button
-        type="button"
-        className="article-row-main"
-        onClick={() => onSelect(key)}
-      >
+    <article className={`article-row ${isRead ? "is-read" : ""}`}>
+      <button type="button" className="article-row-main" onClick={() => onSelect(key)}>
         <span className="article-row-title">{article.title}</span>
         <span className="article-row-meta">
           {article.source && <span className="source-chip-sm">{article.source}</span>}
           <span>{formatDateTime(article.publishedAt || article.created_at)}</span>
-          {notesMap[key] && <span className="badge">メモ</span>}
+          {hasNote && <span className="badge">メモ</span>}
         </span>
       </button>
       <div className="article-row-actions">
         <button
           type="button"
-          className={`row-action-btn ${laterMap[key] ? "active" : ""}`}
+          className={`row-action-btn ${isLater ? "active" : ""}`}
           onClick={(e) => { e.stopPropagation(); onToggleLater(article); }}
-          title={laterMap[key] ? "後で読むから外す" : "後で読む"}
-          aria-label={laterMap[key] ? "後で読むから外す" : "後で読む"}
+          title={isLater ? "後で読むから外す" : "後で読む"}
         >
           ★
         </button>
         <button
           type="button"
-          className={`row-action-btn ${readMap[key] ? "active" : ""}`}
+          className={`row-action-btn ${isRead ? "active" : ""}`}
           onClick={(e) => { e.stopPropagation(); onToggleRead(article); }}
-          title={readMap[key] ? "未読に戻す" : "既読にする"}
-          aria-label={readMap[key] ? "未読に戻す" : "既読にする"}
+          title={isRead ? "未読に戻す" : "既読にする"}
         >
           ✓
         </button>
@@ -462,7 +431,6 @@ function ArticleRow({ article, readMap, laterMap, notesMap, onSelect, onToggleRe
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
           title="元記事を開く"
-          aria-label="元記事を開く"
         >
           ↗
         </a>

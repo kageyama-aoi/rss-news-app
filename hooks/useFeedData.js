@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { buildTopicGroups, groupBySource, isArticleVisible, getArticleKey } from "../lib/article-utils";
+import { getArticleKey } from "../lib/article-utils";
 import { COPY } from "../lib/workspace-copy";
 
 /**
@@ -74,19 +74,6 @@ export function useFeedData() {
     [news, savedNews]
   );
 
-  // フィルタリング適用されたフィード
-  const getVisibleFeed = (sourcePrefs, hideMuted, hideShorts, readMap = {}, unreadOnly = false) => {
-    return news
-      .filter((article) => isArticleVisible(article, sourcePrefs, hideMuted, hideShorts))
-      .filter((article) => !unreadOnly || !readMap[getArticleKey(article)]);
-  };
-
-  const getVisibleSaved = (sourcePrefs, hideMuted, hideShorts, readMap = {}, unreadOnly = false) => {
-    return savedNews
-      .filter((article) => isArticleVisible(article, sourcePrefs, hideMuted, hideShorts))
-      .filter((article) => !unreadOnly || !readMap[getArticleKey(article)]);
-  };
-
   return {
     news,
     savedNews,
@@ -98,9 +85,7 @@ export function useFeedData() {
     isSavedAvailable,
     allSources,
     loadNews,
-    loadSavedNews,
-    getVisibleFeed,
-    getVisibleSaved
+    loadSavedNews
   };
 }
 
