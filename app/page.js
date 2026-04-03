@@ -3,8 +3,10 @@
 import { formatDateTime, getArticleKey } from "../lib/article-utils";
 import { COPY } from "../lib/workspace-copy";
 import { useNewsWorkspace } from "../hooks/use-news-workspace";
+import { CapturePanel } from "../components/capture-panel";
 import { DetailWorkspace } from "../components/detail-workspace";
 import { FeedSection } from "../components/feed-section";
+import { MobileArticleDrawer } from "../components/mobile-article-drawer";
 import { SearchPanel } from "../components/search-panel";
 
 export default function HomePage() {
@@ -242,36 +244,18 @@ export default function HomePage() {
                 </div>
               </div>
             </article>
-            <article className="panel glass-card">
-              <div className="panel-header">
-                <div>
-                  <p className="section-kicker">Capture</p>
-                  <h2>{COPY.captureTitle}</h2>
-                </div>
-              </div>
-              <p className="panel-description">{COPY.captureHint}</p>
-              <div className="form-grid">
-                <label className="field">
-                  <span>タイトル</span>
-                  <input type="text" value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} placeholder="記事タイトル" />
-                </label>
-                <label className="field">
-                  <span>URL</span>
-                  <input type="url" value={manualUrl} onChange={(event) => setManualUrl(event.target.value)} placeholder="https://example.com/article" />
-                </label>
-                <label className="field">
-                  <span>ソース</span>
-                  <input type="text" value={manualSource} onChange={(event) => setManualSource(event.target.value)} placeholder="ソース名" />
-                </label>
-              </div>
-              <div className="panel-actions">
-                <button className="button button-primary" onClick={saveManualNews} disabled={manualSaveLoading}>
-                  <ToolbarIcon name="square.and.arrow.down" />
-                  <span>{manualSaveLoading ? COPY.manualSaving : COPY.manualSave}</span>
-                </button>
-              </div>
-              {manualSaveMessage ? <p className="inline-success">{manualSaveMessage}</p> : null}
-            </article>
+            <CapturePanel
+              ToolbarIcon={ToolbarIcon}
+              manualSaveLoading={manualSaveLoading}
+              manualSaveMessage={manualSaveMessage}
+              manualSource={manualSource}
+              manualTitle={manualTitle}
+              manualUrl={manualUrl}
+              onManualSourceChange={setManualSource}
+              onManualTitleChange={setManualTitle}
+              onManualUrlChange={setManualUrl}
+              onSave={saveManualNews}
+            />
           </div>
         </section>
         <DetailWorkspace
@@ -357,47 +341,15 @@ export default function HomePage() {
             )}
           </article>
         </section>
-        {selectedArticle ? (
-          <aside className="mobile-drawer" aria-label="記事詳細ドロワー">
-            <div className="mobile-drawer-header">
-              <div>
-                <p>記事詳細</p>
-                <strong>{selectedArticle.source || COPY.sourceFallback}</strong>
-              </div>
-              <button
-                type="button"
-                className="button button-tertiary mobile-close"
-                onClick={() => setSelectedKey("")}
-                title="詳細を閉じる"
-              >
-                閉じる
-              </button>
-            </div>
-            <a
-              href={selectedArticle.link}
-              target="_blank"
-              rel="noreferrer"
-              className="article-link detail-link"
-              title={selectedArticle.title}
-            >
-              {selectedArticle.title}
-            </a>
-            <p className={`article-summary ${summaryMap[getArticleKey(selectedArticle)] ? "filled" : ""}`}>
-              {summaryMap[getArticleKey(selectedArticle)] || selectedArticle.summary || COPY.noSummary}
-            </p>
-            <div className="article-actions">
-              <button className="button button-tertiary" onClick={() => toggleRead(selectedArticle)}>
-                {readMap[getArticleKey(selectedArticle)] ? COPY.markUnread : COPY.markRead}
-              </button>
-              <button className="button button-tertiary" onClick={() => toggleLater(selectedArticle)}>
-                {laterMap[getArticleKey(selectedArticle)] ? COPY.removeLater : COPY.addLater}
-              </button>
-              <a className="button button-secondary" href={selectedArticle.link} target="_blank" rel="noreferrer">
-                {COPY.open}
-              </a>
-            </div>
-          </aside>
-        ) : null}
+        <MobileArticleDrawer
+          laterMap={laterMap}
+          onClose={() => setSelectedKey("")}
+          onToggleLater={toggleLater}
+          onToggleRead={toggleRead}
+          readMap={readMap}
+          selectedArticle={selectedArticle}
+          summaryMap={summaryMap}
+        />
         <nav className="mobile-tabbar" aria-label="モバイルナビゲーション">
           <a href="#search">検索</a>
           <a href="#filters">整理</a>
