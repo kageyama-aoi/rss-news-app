@@ -106,6 +106,7 @@ export default function HomePage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [hideMuted, setHideMuted] = useState(true);
   const [groupTopics, setGroupTopics] = useState(true);
+  const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
 
   useEffect(() => {
     setReadMap(readStorage(STORAGE_KEYS.readMap, {}));
@@ -463,17 +464,39 @@ export default function HomePage() {
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
       <section className="workspace">
-        <nav className="section-nav glass-card" aria-label="ページ内ナビゲーション">
+        {isDesktopNavOpen ? (
+          <button
+            type="button"
+            className="desktop-nav-scrim"
+            aria-label="ナビゲーションを閉じる"
+            onClick={() => setIsDesktopNavOpen(false)}
+          />
+        ) : null}
+        <nav
+          id="desktop-section-nav"
+          className={`section-nav glass-card ${isDesktopNavOpen ? "is-open" : ""}`}
+          aria-label="ページ内ナビゲーション"
+        >
           <div className="sidebar-head">
-            <p>Workspace</p>
-            <span>読む、残す、絞る</span>
+            <div>
+              <p>Workspace</p>
+              <span>読む、残す、絞る</span>
+            </div>
+            <button
+              type="button"
+              className="button button-tertiary nav-close"
+              onClick={() => setIsDesktopNavOpen(false)}
+              title="ナビゲーションを閉じる"
+            >
+              閉じる
+            </button>
           </div>
-          <a href="#overview">概要</a>
-          <a href="#search">検索</a>
-          <a href="#filters">整理</a>
-          <a href="#feed">フィード</a>
-          <a href="#queue">後で読む</a>
-          <a href="#library">保存済み</a>
+          <a href="#overview" onClick={() => setIsDesktopNavOpen(false)}>概要</a>
+          <a href="#search" onClick={() => setIsDesktopNavOpen(false)}>検索</a>
+          <a href="#filters" onClick={() => setIsDesktopNavOpen(false)}>整理</a>
+          <a href="#feed" onClick={() => setIsDesktopNavOpen(false)}>フィード</a>
+          <a href="#queue" onClick={() => setIsDesktopNavOpen(false)}>後で読む</a>
+          <a href="#library" onClick={() => setIsDesktopNavOpen(false)}>保存済み</a>
         </nav>
         <header className="hero-card glass-card" id="overview">
           <div className="hero-copy">
@@ -498,6 +521,17 @@ export default function HomePage() {
             </div>
           </div>
           <div className="hero-toolbar">
+            <button
+              type="button"
+              className="button button-tertiary desktop-nav-toggle"
+              onClick={() => setIsDesktopNavOpen((current) => !current)}
+              aria-expanded={isDesktopNavOpen}
+              aria-controls="desktop-section-nav"
+              title="ページ内ナビゲーションを開く"
+            >
+              <ToolbarIcon name="sidebar.left" />
+              <span>{isDesktopNavOpen ? "ナビを閉じる" : "ナビを開く"}</span>
+            </button>
             <button className="button button-primary" onClick={loadNews} disabled={loading}>
               <ToolbarIcon name="arrow.down.circle.fill" />
               <span>{loading ? COPY.updateLoading : COPY.update}</span>

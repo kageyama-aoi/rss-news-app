@@ -121,6 +121,12 @@ a {
   display: none;
 }
 
+.desktop-nav-scrim,
+.desktop-nav-toggle,
+.nav-close {
+  display: none;
+}
+
 .mobile-drawer,
 .mobile-tabbar {
   display: none;
@@ -686,29 +692,50 @@ a {
 
 @media (min-width: 1181px) {
   .workspace {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 20px;
-    align-items: start;
+    display: block;
+  }
+
+  .desktop-nav-toggle,
+  .nav-close {
+    display: inline-flex;
+  }
+
+  .desktop-nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 7;
+    display: block;
+    border: 0;
+    background: rgba(15, 23, 42, 0.16);
+    cursor: pointer;
   }
 
   .workspace > .section-nav {
-    position: sticky;
+    position: fixed;
     top: 24px;
+    left: 24px;
+    z-index: 8;
     display: grid;
     gap: 10px;
-    width: 100%;
+    width: min(240px, calc(100vw - 48px));
     margin: 0;
     padding: 14px;
-    align-self: start;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-16px);
+    transition: opacity 180ms ease, transform 180ms ease;
   }
 
-  .workspace > :not(.section-nav) {
-    grid-column: 2;
+  .workspace > .section-nav.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
   }
 
   .sidebar-head {
-    display: grid;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 4px;
     padding: 4px 6px 10px;
     border-bottom: 1px solid var(--border);
