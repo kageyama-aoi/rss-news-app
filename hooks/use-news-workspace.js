@@ -21,7 +21,7 @@ export function useNewsWorkspace() {
   const { isDesktopNavOpen, setIsDesktopNavOpen, isSearchCollapsed, setIsSearchCollapsed, isFilterCollapsed, setIsFilterCollapsed, isFeedCollapsed, setIsFeedCollapsed, expandedSources, setExpandedSources, hideShorts, setHideShorts, unreadOnly, setUnreadOnly, hideMuted, setHideMuted, groupTopics, setGroupTopics, selectedKey, setSelectedKey } = useUIState();
 
   // フィード取得層
-  const { news, savedNews, loading, savedLoading, error, savedError, fetchedAt, isSavedAvailable, allSources, loadNews, loadSavedNews, getVisibleFeed, getVisibleSaved } = useFeedData();
+  const { news, savedNews, loading, savedLoading, error, savedError, fetchedAt, isSavedAvailable, allSources, loadNews, loadSavedNews } = useFeedData();
 
   // 検索層
   const { searchKeyword, setSearchKeyword, searchScope, setSearchScope, viewName, setViewName, clearSearch, performSearch } = useSearch();
@@ -53,9 +53,19 @@ export function useNewsWorkspace() {
   const activeStatus = loading || savedLoading || manualSaveLoading ? COPY.busy : COPY.ready;
 
   // 可視フィード（フィルタ適用）
-  const visibleFeed = useMemo(() => getVisibleFeed(sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly), [sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly]);
+  const visibleFeed = useMemo(
+    () => news
+      .filter((article) => isArticleVisible(article, sourcePrefs, hideMuted, hideShorts))
+      .filter((article) => !unreadOnly || !readMap[getArticleKey(article)]),
+    [news, sourcePrefs, hideMuted, hideShorts, unreadOnly, readMap]
+  );
 
-  const visibleSaved = useMemo(() => getVisibleSaved(sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly), [sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly]);
+  const visibleSaved = useMemo(
+    () => savedNews
+      .filter((article) => isArticleVisible(article, sourcePrefs, hideMuted, hideShorts))
+      .filter((article) => !unreadOnly || !readMap[getArticleKey(article)]),
+    [savedNews, sourcePrefs, hideMuted, hideShorts, unreadOnly, readMap]
+  );
 
   // 後で読むキュー
   const queueItems = useMemo(() => {
