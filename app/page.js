@@ -1,20 +1,14 @@
 "use client";
 
 import { formatDateTime, getArticleKey } from "../lib/article-utils";
-import { withSearchBucket } from "../lib/search-utils";
 import { COPY } from "../lib/workspace-copy";
 import { useNewsWorkspace } from "../hooks/use-news-workspace";
-import { CapturePanel } from "../components/capture-panel";
-import { DetailWorkspace } from "../components/detail-workspace";
-import { FeedSection } from "../components/feed-section";
-import { MobileArticleDrawer } from "../components/mobile-article-drawer";
-import { SearchPanel } from "../components/search-panel";
 
 export default function HomePage() {
   const {
-    activeStatus,
+    activeTab,
+    setActiveTab,
     allSources,
-    applySavedView,
     clearSearch,
     error,
     expandedSources,
@@ -23,11 +17,8 @@ export default function HomePage() {
     groupedFeed,
     hideMuted,
     hideShorts,
-    isDesktopNavOpen,
     isFilterCollapsed,
-    isFeedCollapsed,
     isSavedAvailable,
-    isSearchCollapsed,
     laterMap,
     loadNews,
     loadSavedNews,
@@ -40,9 +31,6 @@ export default function HomePage() {
     notesMap,
     queueItems,
     readMap,
-    relatedGroups,
-    removeSavedView,
-    saveCurrentView,
     saveLoadingMap,
     saveManualNews,
     saveMessageMap,
@@ -60,9 +48,6 @@ export default function HomePage() {
     setGroupTopics,
     setHideMuted,
     setHideShorts,
-    setIsDesktopNavOpen,
-    setIsFeedCollapsed,
-    setIsSearchCollapsed,
     setManualSource,
     setManualTitle,
     setManualUrl,
@@ -70,7 +55,6 @@ export default function HomePage() {
     setSearchScope,
     setSelectedKey,
     setUnreadOnly,
-    setViewName,
     sourcePrefs,
     summarizeTitle,
     summaryLoadingMap,
@@ -82,482 +66,467 @@ export default function HomePage() {
     unreadCount,
     unreadOnly,
     updateNote,
-    viewName,
     visibleFeed,
     visibleSaved
   } = useNewsWorkspace();
 
+  const isSearchActive = searchKeyword.trim().length > 0;
+
+  const handleSearchChange = (value) => {
+    setSearchKeyword(value);
+    if (value.trim()) {
+      setActiveTab("search");
+    } else {
+      setActiveTab("feed");
+    }
+  };
+
+  const handleClearSearch = () => {
+    clearSearch();
+    setActiveTab("feed");
+  };
+
   return (
-    <main className="app-shell">
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
-      <section className="workspace">
-        {isDesktopNavOpen ? (
-          <button
-            type="button"
-            className="desktop-nav-scrim"
-            aria-label="ナビゲーションを閉じる"
-            onClick={() => setIsDesktopNavOpen(false)}
+    <div className="app-shell">
+      {/* ── スリムヘッダー ── */}
+      <header className="app-header glass-card">
+        <span className="app-title">My Feed</span>
+        <div className="header-search-wrap">
+          <SearchIcon />
+          <input
+            className="header-search-input"
+            type="search"
+            placeholder="記事を検索..."
+            value={searchKeyword}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            aria-label="記事を検索"
           />
-        ) : null}
-        <nav
-          id="desktop-section-nav"
-          className={`section-nav glass-card ${isDesktopNavOpen ? "is-open" : ""}`}
-          aria-label="ページ内ナビゲーション"
-        >
-          <div className="sidebar-head">
-            <div>
-              <p>Workspace</p>
-              <span>読む、残す、絞る</span>
-            </div>
+          {searchKeyword && (
             <button
               type="button"
-              className="button button-tertiary nav-close"
-              onClick={() => setIsDesktopNavOpen(false)}
-              title="ナビゲーションを閉じる"
+              className="search-clear"
+              onClick={handleClearSearch}
+              aria-label="検索をクリア"
             >
-              閉じる
+              ✕
             </button>
-          </div>
-          <a href="#overview" onClick={() => setIsDesktopNavOpen(false)}>概要</a>
-          <a href="#search" onClick={() => setIsDesktopNavOpen(false)}>検索</a>
-          <a href="#filters" onClick={() => setIsDesktopNavOpen(false)}>整理</a>
-          <a href="#feed" onClick={() => setIsDesktopNavOpen(false)}>フィード</a>
-          <a href="#queue" onClick={() => setIsDesktopNavOpen(false)}>後で読む</a>
-          <a href="#library" onClick={() => setIsDesktopNavOpen(false)}>保存済み</a>
-        </nav>
-        <header className="hero-card glass-card" id="overview">
-          <div className="hero-copy">
-            <p className="eyebrow">Curated RSS Workspace</p>
-            <div className="hero-title-row">
-              <h1>{COPY.title}</h1>
-              <span className={`status-pill ${activeStatus === COPY.busy ? "busy" : ""}`}>
-                <span className="status-dot" />
-                {activeStatus}
-              </span>
-            </div>
-            <p className="hero-description">{COPY.subtitle}</p>
-            <div className="hero-meta">
-              <MetricPill label="表示中" value={`${visibleFeed.length}`} />
-              <MetricPill label="未読" value={`${unreadCount}`} />
-              <MetricPill label="後で読む" value={`${queueItems.length}`} />
-              <MetricPill label="ソース" value={`${allSources.length}`} />
-              <MetricPill
-                label="最終更新"
-                value={fetchedAt ? formatDateTime(fetchedAt) : COPY.unknownDate}
-              />
-            </div>
-          </div>
-          <div className="hero-toolbar">
-            <button
-              type="button"
-              className="button button-tertiary desktop-nav-toggle"
-              onClick={() => setIsDesktopNavOpen((current) => !current)}
-              aria-expanded={isDesktopNavOpen}
-              aria-controls="desktop-section-nav"
-              title="ページ内ナビゲーションを開く"
-            >
-              <ToolbarIcon name="sidebar.left" />
-              <span>{isDesktopNavOpen ? "ナビを閉じる" : "ナビを開く"}</span>
-            </button>
-            <button className="button button-primary" onClick={loadNews} disabled={loading}>
-              <ToolbarIcon name="arrow.down.circle.fill" />
-              <span>{loading ? COPY.updateLoading : COPY.update}</span>
-            </button>
-            <button className="button button-secondary" onClick={loadSavedNews} disabled={savedLoading}>
-              <ToolbarIcon name="bookmark.circle" />
-              <span>{savedLoading ? COPY.syncSavedLoading : COPY.syncSaved}</span>
-            </button>
-            <p className="hero-status-note">
-              {isSavedAvailable ? COPY.savedReady : COPY.savedMissing}
-            </p>
-          </div>
-        </header>
-        {(error || savedError) && (
-          <section className="message-strip error-strip glass-card" aria-live="polite">
-            {error ? <p>{error}</p> : null}
-            {savedError ? <p>{savedError}</p> : null}
-          </section>
-        )}
-        <div className="control-buttons">
+          )}
+        </div>
+        <div className="header-actions">
           <button
             type="button"
-            className={`control-button ${!isSearchCollapsed ? "active" : ""}`}
-            onClick={() => setIsSearchCollapsed((current) => !current)}
-            title="検索を開く"
+            className={`header-btn ${!isFilterCollapsed ? "active" : ""}`}
+            onClick={() => setFilterCollapsed((c) => !c)}
+            title="フィルター設定"
+            aria-label="フィルター設定"
           >
-            🔍
+            <FilterIcon />
           </button>
           <button
             type="button"
-            className={`control-button ${!isFilterCollapsed ? "active" : ""}`}
-            onClick={() => setFilterCollapsed((current) => !current)}
-            title="フィルターを開く"
+            className="header-btn"
+            onClick={loadNews}
+            disabled={loading}
+            title="フィードを更新"
+            aria-label="フィードを更新"
           >
-            ⚙️
+            <RefreshIcon spinning={loading} />
           </button>
         </div>
-        <section className="control-layout-modal">
-          <SearchPanel
-            applySavedView={applySavedView}
-            ArticleList={ArticleList}
-            clearSearch={clearSearch}
-            emptyMessage={COPY.emptySearch}
-            idleMessage={<EmptyState message={COPY.idleSearch} />}
-            isCollapsed={isSearchCollapsed}
-            laterMap={laterMap}
-            notesMap={notesMap}
-            onKeywordChange={setSearchKeyword}
-            onRemoveSavedView={removeSavedView}
-            onSaveCurrentView={saveCurrentView}
-            onScopeChange={setSearchScope}
-            onSelect={setSelectedKey}
-            onToggleCollapsed={() => setIsSearchCollapsed((current) => !current)}
-            onViewNameChange={setViewName}
-            readMap={readMap}
-            savedViews={savedViews}
-            scope={searchScope}
-            searchKeyword={searchKeyword}
-            searchResults={searchResults}
-            viewName={viewName}
-          />
-          {!isFilterCollapsed && (
-            <div className="side-stack">
-              <article className="panel glass-card" id="filters">
-              <div className="panel-header">
-                <div>
-                  <p className="section-kicker">Refine</p>
-                  <h2>{COPY.filtersTitle}</h2>
+      </header>
+
+      {/* ── フィルターパネル ── */}
+      {!isFilterCollapsed && (
+        <div className="filter-panel glass-card">
+          <div className="filter-panel-inner">
+            <div className="filter-toggles">
+              <ToggleChip checked={hideShorts} label="Shorts 非表示" onChange={() => setHideShorts((c) => !c)} />
+              <ToggleChip checked={unreadOnly} label="未読のみ" onChange={() => setUnreadOnly((c) => !c)} />
+              <ToggleChip checked={hideMuted} label="ミュート非表示" onChange={() => setHideMuted((c) => !c)} />
+              <ToggleChip checked={groupTopics} label="トピックまとめ" onChange={() => setGroupTopics((c) => !c)} />
+            </div>
+            <div className="filter-sources">
+              {allSources.map((source) => {
+                const prefs = sourcePrefs[source] || { enabled: true, muted: false };
+                return (
+                  <div className="filter-source-row" key={source}>
+                    <span>{source}</span>
+                    <div>
+                      <button
+                        type="button"
+                        className={`mini-chip ${prefs.enabled ? "active" : ""}`}
+                        onClick={() => toggleSourceEnabled(source)}
+                      >
+                        {prefs.enabled ? "表示" : "非表示"}
+                      </button>
+                      <button
+                        type="button"
+                        className={`mini-chip ${prefs.muted ? "muted" : ""}`}
+                        onClick={() => toggleSourceMuted(source)}
+                      >
+                        {prefs.muted ? "解除" : "ミュート"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── タブナビゲーション ── */}
+      <nav className="tab-nav" aria-label="メインナビゲーション">
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === "feed" ? "active" : ""}`}
+          onClick={() => { setActiveTab("feed"); handleClearSearch(); }}
+        >
+          フィード
+          {unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>}
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === "queue" ? "active" : ""}`}
+          onClick={() => { setActiveTab("queue"); handleClearSearch(); }}
+        >
+          後で読む
+          {queueItems.length > 0 && <span className="tab-badge">{queueItems.length}</span>}
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === "library" ? "active" : ""}`}
+          onClick={() => { setActiveTab("library"); handleClearSearch(); }}
+        >
+          保存済み
+        </button>
+      </nav>
+
+      {/* ── エラー ── */}
+      {(error || savedError) && (
+        <div className="error-banner" role="alert">
+          {error && <p>{error}</p>}
+          {savedError && <p>{savedError}</p>}
+        </div>
+      )}
+
+      {/* ── メインコンテンツ ── */}
+      <main className="tab-content">
+
+        {/* 検索結果 */}
+        {isSearchActive && (
+          <div className="article-list">
+            {searchResults.length === 0 ? (
+              <p className="empty-msg">「{searchKeyword}」に一致する記事はありません</p>
+            ) : (
+              searchResults.map((article) => (
+                <ArticleRow
+                  key={getArticleKey(article)}
+                  article={article}
+                  readMap={readMap}
+                  laterMap={laterMap}
+                  notesMap={notesMap}
+                  onSelect={setSelectedKey}
+                  onToggleRead={toggleRead}
+                  onToggleLater={toggleLater}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {/* フィード */}
+        {!isSearchActive && activeTab === "feed" && (
+          Object.keys(groupedFeed).length === 0
+            ? <p className="empty-msg">{loading ? "読み込み中..." : COPY.emptyFeed}</p>
+            : <div className="source-stack">
+                {Object.entries(groupedFeed).map(([source, articles]) => (
+                  <section key={source} className="source-group">
+                    <button
+                      type="button"
+                      className="source-group-header"
+                      onClick={() =>
+                        setExpandedSources((cur) => ({ ...cur, [source]: !cur[source] }))
+                      }
+                    >
+                      <span className="source-name">{source}</span>
+                      <span className="source-count">{articles.length}件</span>
+                      <ChevronIcon open={expandedSources[source] !== false} />
+                    </button>
+                    {expandedSources[source] !== false && (
+                      <div className="article-list">
+                        {(expandedSources[source] === true ? articles : articles.slice(0, 3)).map((article) => (
+                          <ArticleRow
+                            key={getArticleKey(article)}
+                            article={article}
+                            readMap={readMap}
+                            laterMap={laterMap}
+                            notesMap={notesMap}
+                            onSelect={setSelectedKey}
+                            onToggleRead={toggleRead}
+                            onToggleLater={toggleLater}
+                          />
+                        ))}
+                        {articles.length > 3 && expandedSources[source] !== true && (
+                          <button
+                            type="button"
+                            className="load-more"
+                            onClick={() =>
+                              setExpandedSources((cur) => ({ ...cur, [source]: true }))
+                            }
+                          >
+                            もっと見る（残り {articles.length - 3} 件）
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+        )}
+
+        {/* 後で読む */}
+        {!isSearchActive && activeTab === "queue" && (
+          queueItems.length === 0
+            ? <p className="empty-msg">{COPY.emptyQueue}</p>
+            : <div className="article-list">
+                {queueItems.map((article) => (
+                  <ArticleRow
+                    key={getArticleKey(article)}
+                    article={article}
+                    readMap={readMap}
+                    laterMap={laterMap}
+                    notesMap={notesMap}
+                    onSelect={setSelectedKey}
+                    onToggleRead={toggleRead}
+                    onToggleLater={toggleLater}
+                  />
+                ))}
+              </div>
+        )}
+
+        {/* 保存済み */}
+        {!isSearchActive && activeTab === "library" && (
+          !isSavedAvailable
+            ? <p className="empty-msg">{COPY.savedUnavailable}</p>
+            : visibleSaved.length === 0
+              ? <p className="empty-msg">{COPY.emptyLibrary}</p>
+              : <div className="article-list">
+                  {visibleSaved.map((article) => (
+                    <ArticleRow
+                      key={getArticleKey(article)}
+                      article={article}
+                      readMap={readMap}
+                      laterMap={laterMap}
+                      notesMap={notesMap}
+                      onSelect={setSelectedKey}
+                      onToggleRead={toggleRead}
+                      onToggleLater={toggleLater}
+                    />
+                  ))}
                 </div>
+        )}
+      </main>
+
+      {/* ── 記事詳細ドロワー ── */}
+      {selectedArticle && (
+        <>
+          <div
+            className="drawer-scrim"
+            onClick={() => setSelectedKey("")}
+            aria-hidden="true"
+          />
+          <aside className="article-drawer glass-card">
+            <div className="drawer-header">
+              <span className="source-chip">{selectedArticle.source || COPY.sourceFallback}</span>
+              <button
+                type="button"
+                className="drawer-close"
+                onClick={() => setSelectedKey("")}
+                aria-label="詳細を閉じる"
+              >
+                ✕
+              </button>
+            </div>
+            <a
+              href={selectedArticle.link}
+              target="_blank"
+              rel="noreferrer"
+              className="drawer-title"
+            >
+              {selectedArticle.title}
+            </a>
+            <p className="drawer-meta">
+              {formatDateTime(selectedArticle.publishedAt || selectedArticle.created_at)}
+            </p>
+            <div className="drawer-actions">
+              <button
+                type="button"
+                className={`action-btn ${readMap[getArticleKey(selectedArticle)] ? "active" : ""}`}
+                onClick={() => toggleRead(selectedArticle)}
+              >
+                {readMap[getArticleKey(selectedArticle)] ? "未読に戻す" : "既読にする"}
+              </button>
+              <button
+                type="button"
+                className={`action-btn ${laterMap[getArticleKey(selectedArticle)] ? "active" : ""}`}
+                onClick={() => toggleLater(selectedArticle)}
+              >
+                {laterMap[getArticleKey(selectedArticle)] ? "後で読むから外す" : "後で読む"}
+              </button>
+              {isSavedAvailable && (
                 <button
                   type="button"
-                  className="button button-tertiary"
-                  onClick={() => setFilterCollapsed((current) => !current)}
-                  title="フィルターを閉じる"
+                  className="action-btn"
+                  onClick={() => saveNews(selectedArticle)}
+                  disabled={saveLoadingMap[getArticleKey(selectedArticle)]}
                 >
-                  ✕
+                  {saveLoadingMap[getArticleKey(selectedArticle)] ? "保存中..." : "保存する"}
                 </button>
-              </div>
-              <p className="panel-description">{COPY.filtersHint}</p>
-              <div className="toggle-grid">
-                <ToggleCard checked={hideShorts} label={COPY.hideShorts} onChange={() => setHideShorts((current) => !current)} />
-                <ToggleCard checked={unreadOnly} label={COPY.unreadOnly} onChange={() => setUnreadOnly((current) => !current)} />
-                <ToggleCard checked={hideMuted} label={COPY.hideMuted} onChange={() => setHideMuted((current) => !current)} />
-                <ToggleCard checked={groupTopics} label={COPY.groupTopics} onChange={() => setGroupTopics((current) => !current)} />
-              </div>
-              <div className="source-settings">
-                <div className="subhead-row">
-                  <h3>{COPY.sourceSettings}</h3>
-                </div>
-                <div className="source-control-list">
-                  {allSources.map((source) => {
-                    const prefs = sourcePrefs[source] || { enabled: true, muted: false };
-                    const count = visibleFeed.filter((article) => article.source === source).length;
-
-                    return (
-                      <div className="source-control" key={source} title={`${source} の表示設定`}>
-                        <div>
-                          <strong>{source}</strong>
-                          <p>{count} items</p>
-                        </div>
-                        <div className="source-actions">
-                          <button type="button" className={`mini-chip ${prefs.enabled ? "active" : ""}`} onClick={() => toggleSourceEnabled(source)} title={`${source} の表示切替`}>
-                            {prefs.enabled ? "表示" : "非表示"}
-                          </button>
-                          <button type="button" className={`mini-chip ${prefs.muted ? "muted" : ""}`} onClick={() => toggleSourceMuted(source)} title={`${source} のミュート切替`}>
-                            {prefs.muted ? "ミュート解除" : "ミュート"}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </article>
-            <CapturePanel
-              ToolbarIcon={ToolbarIcon}
-              manualSaveLoading={manualSaveLoading}
-              manualSaveMessage={manualSaveMessage}
-              manualSource={manualSource}
-              manualTitle={manualTitle}
-              manualUrl={manualUrl}
-              onManualSourceChange={setManualSource}
-              onManualTitleChange={setManualTitle}
-              onManualUrlChange={setManualUrl}
-              onSave={saveManualNews}
-            />
+              )}
+              <button
+                type="button"
+                className="action-btn action-btn-ai"
+                onClick={() => summarizeTitle(selectedArticle)}
+                disabled={summaryLoadingMap[getArticleKey(selectedArticle)]}
+              >
+                {summaryLoadingMap[getArticleKey(selectedArticle)] ? "要約中..." : "AI 要約"}
+              </button>
             </div>
-          )}
-        </section>
-        <DetailWorkspace
-          EmptyState={EmptyState}
-          laterMap={laterMap}
-          notesMap={notesMap}
-          onSelectArticle={setSelectedKey}
-          onSummarize={summarizeTitle}
-          onToggleLater={toggleLater}
-          onToggleRead={toggleRead}
-          onUpdateNote={updateNote}
-          readMap={readMap}
-          relatedGroups={relatedGroups}
-          selectedArticle={selectedArticle}
-          selectedNote={selectedNote}
-          summaryLoadingMap={summaryLoadingMap}
-          summaryMap={summaryMap}
-        />
-        <section className="content-stack">
-          <FeedSection
-            FeedArticleRow={FeedArticleRow}
-            groupedFeed={groupedFeed}
-            expandedSources={expandedSources}
-            isCollapsed={isFeedCollapsed}
-            laterMap={laterMap}
-            notesMap={notesMap}
-            onSelect={setSelectedKey}
-            onSave={saveNews}
-            onSummarize={summarizeTitle}
-            onToggleCollapsed={() => setIsFeedCollapsed((current) => !current)}
-            onToggleLater={toggleLater}
-            onToggleRead={toggleRead}
-            onToggleSourceExpanded={(source) =>
-              setExpandedSources((current) => ({
-                ...current,
-                [source]: !current[source]
-              }))
-            }
-            readMap={readMap}
-            renderEmpty={(message) => <EmptyState message={message} />}
-            saveLoadingMap={saveLoadingMap}
-            saveMessageMap={saveMessageMap}
-            savedAvailable={isSavedAvailable}
-            summaryLoadingMap={summaryLoadingMap}
-            summaryMap={summaryMap}
-          />
-          <article className="content-panel glass-card" id="queue">
-            <div className="content-panel-header">
-              <div>
-                <p className="section-kicker">Queue</p>
-                <h2>{COPY.queueTitle}</h2>
-              </div>
-              <p>{COPY.queueHint}</p>
-            </div>
-            <ArticleList
-              emptyMessage={COPY.emptyQueue}
-              items={queueItems.map(withSearchBucket("queue"))}
-              laterMap={laterMap}
-              notesMap={notesMap}
-              onSelect={setSelectedKey}
-              readMap={readMap}
-            />
-          </article>
-          <article className="content-panel glass-card" id="library">
-            <div className="content-panel-header">
-              <div>
-                <p className="section-kicker">Library</p>
-                <h2>{COPY.libraryTitle}</h2>
-              </div>
-              <p>{COPY.libraryHint}</p>
-            </div>
-            {isSavedAvailable ? (
-              <ArticleList
-                emptyMessage={COPY.emptyLibrary}
-                items={visibleSaved.map(withSearchBucket("saved"))}
-                laterMap={laterMap}
-                notesMap={notesMap}
-                onSelect={setSelectedKey}
-                readMap={readMap}
-              />
-            ) : (
-              <EmptyState message={COPY.savedUnavailable} />
+            {summaryMap[getArticleKey(selectedArticle)] && (
+              <p className="drawer-summary">{summaryMap[getArticleKey(selectedArticle)]}</p>
             )}
-          </article>
-        </section>
-        <MobileArticleDrawer
-          laterMap={laterMap}
-          onClose={() => setSelectedKey("")}
-          onToggleLater={toggleLater}
-          onToggleRead={toggleRead}
-          readMap={readMap}
-          selectedArticle={selectedArticle}
-          summaryMap={summaryMap}
-        />
-        <nav className="mobile-tabbar" aria-label="モバイルナビゲーション">
-          <a href="#search">検索</a>
-          <a href="#filters">整理</a>
-          <a href="#feed">フィード</a>
-          <a href="#queue">後で読む</a>
-          <a href="#library">保存済み</a>
-        </nav>
-      </section>
-    </main>
-  );
-}
-
-function MetricPill({ label, value }) {
-  return (
-    <div className="info-pill">
-      <span>{label}</span>
-      <strong>{value}</strong>
+            {saveMessageMap[getArticleKey(selectedArticle)] && (
+              <p className="drawer-save-msg">{saveMessageMap[getArticleKey(selectedArticle)]}</p>
+            )}
+            <label className="drawer-note-label">
+              メモ
+              <textarea
+                className="drawer-note"
+                value={selectedNote}
+                onChange={(e) => updateNote(selectedArticle, e.target.value)}
+                placeholder="メモを書く..."
+                rows={3}
+              />
+            </label>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
 
-function ToggleCard({ checked, label, onChange }) {
-  return (
-    <button type="button" className={`toggle-card ${checked ? "active" : ""}`} onClick={onChange}>
-      <span>{label}</span>
-      <strong>{checked ? "ON" : "OFF"}</strong>
-    </button>
-  );
-}
-
-function FeedArticleRow({
-  article,
-  onSave,
-  onSelect,
-  onSummarize,
-  onToggleLater,
-  onToggleRead,
-  summaryMap,
-  summaryLoadingMap,
-  saveLoadingMap,
-  saveMessageMap,
-  readMap,
-  laterMap,
-  notesMap,
-  savedAvailable
-}) {
+/* ── 記事行（コンパクト） ── */
+function ArticleRow({ article, readMap, laterMap, notesMap, onSelect, onToggleRead, onToggleLater }) {
   const key = getArticleKey(article);
-
   return (
-    <article className={`article-row ${readMap[key] ? "read" : ""}`}>
-      <div className="article-copy">
-        <div className="article-meta">
-          <span className="source-chip" title={article.source || COPY.sourceFallback}>{article.source || COPY.sourceFallback}</span>
-          <span>{formatDateTime(article.publishedAt)}</span>
-          {notesMap[key] ? <span className="meta-badge">メモあり</span> : null}
-          {laterMap[key] ? <span className="meta-badge">後で読む</span> : null}
-        </div>
-        <a href={article.link} target="_blank" rel="noreferrer" className="article-link" title={article.title}>
-          {article.title}
-        </a>
-        <p className={`article-summary ${summaryMap[key] ? "filled" : ""}`}>
-          {summaryMap[key] || COPY.noSummary}
-        </p>
-        {saveMessageMap[key] ? <p className="inline-success">{saveMessageMap[key]}</p> : null}
-      </div>
-      <div className="article-actions">
-        <button className="button button-tertiary" onClick={() => onSelect(key)} title="右側のワークスペースで詳細を開く">
-          {COPY.detail}
-        </button>
-        <button className="button button-tertiary" onClick={() => onToggleRead(article)} title="既読状態を切り替え">
-          {readMap[key] ? COPY.markUnread : COPY.markRead}
-        </button>
-        <button className="button button-tertiary" onClick={() => onToggleLater(article)} title="後で読むキューに追加または解除">
-          {laterMap[key] ? COPY.removeLater : COPY.addLater}
+    <article className={`article-row ${readMap[key] ? "is-read" : ""}`}>
+      <button
+        type="button"
+        className="article-row-main"
+        onClick={() => onSelect(key)}
+      >
+        <span className="article-row-title">{article.title}</span>
+        <span className="article-row-meta">
+          {article.source && <span className="source-chip-sm">{article.source}</span>}
+          <span>{formatDateTime(article.publishedAt || article.created_at)}</span>
+          {notesMap[key] && <span className="badge">メモ</span>}
+        </span>
+      </button>
+      <div className="article-row-actions">
+        <button
+          type="button"
+          className={`row-action-btn ${laterMap[key] ? "active" : ""}`}
+          onClick={(e) => { e.stopPropagation(); onToggleLater(article); }}
+          title={laterMap[key] ? "後で読むから外す" : "後で読む"}
+          aria-label={laterMap[key] ? "後で読むから外す" : "後で読む"}
+        >
+          ★
         </button>
         <button
-          className="button button-secondary"
-          onClick={() => onSummarize(article)}
-          disabled={summaryLoadingMap[key]}
-          title="タイトルから要点を生成"
+          type="button"
+          className={`row-action-btn ${readMap[key] ? "active" : ""}`}
+          onClick={(e) => { e.stopPropagation(); onToggleRead(article); }}
+          title={readMap[key] ? "未読に戻す" : "既読にする"}
+          aria-label={readMap[key] ? "未読に戻す" : "既読にする"}
         >
-          {summaryLoadingMap[key] ? COPY.summarizeLoading : COPY.summarize}
+          ✓
         </button>
-        <button
-          className="button button-secondary"
-          onClick={() => onSave(article)}
-          disabled={saveLoadingMap[key] || !savedAvailable}
-          title="保存ライブラリに追加"
+        <a
+          className="row-action-btn"
+          href={article.link}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title="元記事を開く"
+          aria-label="元記事を開く"
         >
-          {saveLoadingMap[key] ? COPY.saveLoading : COPY.save}
-        </button>
-        <a className="button button-tertiary" href={article.link} target="_blank" rel="noreferrer" title="元記事を開く">
-          {COPY.open}
+          ↗
         </a>
       </div>
     </article>
   );
 }
 
-function ArticleList({ items, emptyMessage, laterMap, notesMap, onSelect, readMap }) {
-  if (items.length === 0) {
-    return <EmptyState message={emptyMessage} />;
-  }
-
+/* ── 小さいトグルチップ ── */
+function ToggleChip({ checked, label, onChange }) {
   return (
-    <div className="article-list">
-      {items.map((article) => {
-        const key = getArticleKey(article);
-
-        return (
-          <article className={`library-item ${readMap[key] ? "read" : ""}`} key={article.id || key}>
-            <div className="article-meta">
-              <span className="source-chip" title={article.source || COPY.sourceFallback}>{article.source || COPY.sourceFallback}</span>
-              <span>
-                {article.searchBucket ? `${article.searchBucket} · ` : ""}
-                {formatDateTime(article.created_at || article.publishedAt)}
-              </span>
-              {notesMap[key] ? <span className="meta-badge">メモあり</span> : null}
-              {laterMap[key] ? <span className="meta-badge">後で読む</span> : null}
-            </div>
-            <a href={article.link} target="_blank" rel="noreferrer" className="article-link" title={article.title}>
-              {article.title}
-            </a>
-            <p className={`article-summary ${article.summary ? "filled" : ""}`}>
-              {article.summary || COPY.noSummary}
-            </p>
-            <div className="article-actions">
-              <button className="button button-tertiary" onClick={() => onSelect(key)} title="右側のワークスペースで詳細を開く">
-                {COPY.detail}
-              </button>
-              <a className="button button-tertiary" href={article.link} target="_blank" rel="noreferrer" title="元記事を開く">
-                {COPY.open}
-              </a>
-            </div>
-          </article>
-        );
-      })}
-    </div>
+    <button
+      type="button"
+      className={`toggle-chip ${checked ? "active" : ""}`}
+      onClick={onChange}
+    >
+      {label}
+    </button>
   );
 }
 
-function EmptyState({ message }) {
+/* ── アイコン ── */
+function SearchIcon() {
   return (
-    <div className="empty-state">
-      <div className="empty-orb" />
-      <p>{message}</p>
-    </div>
+    <svg className="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M13 13l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
 
-function ToolbarIcon({ name }) {
-  const icons = {
-    "arrow.down.circle.fill": (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v8" />
-        <path d="M8.75 12.75 12 16l3.25-3.25" />
-      </>
-    ),
-    "bookmark.circle": (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M10 8.25A1.25 1.25 0 0 1 11.25 7h1.5A1.25 1.25 0 0 1 14 8.25V15l-2-1.3L10 15V8.25Z" />
-      </>
-    ),
-    "square.and.arrow.down": (
-      <>
-        <path d="M7 12.75V17h10v-4.25" />
-        <path d="M12 5v9" />
-        <path d="M8.75 10.75 12 14l3.25-3.25" />
-      </>
-    )
-  };
-
+function FilterIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="toolbar-icon">
-      {icons[name]}
+    <svg className="btn-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M3 5h14M6 10h8M9 15h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ spinning }) {
+  return (
+    <svg
+      className={`btn-icon ${spinning ? "spinning" : ""}`}
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M16.5 10a6.5 6.5 0 1 1-1.6-4.3"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path d="M14 4l1.5 2-2 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }) {
+  return (
+    <svg
+      className={`chevron ${open ? "open" : ""}`}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

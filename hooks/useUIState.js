@@ -6,6 +6,7 @@ import { useState } from "react";
  * UI パネルの開閉状態を管理
  */
 export function useUIState() {
+  const [activeTab, setActiveTab] = useState("feed");
   const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
   const [isSearchCollapsed, setIsSearchCollapsed] = useState(true);
   const [isFilterCollapsed, setIsFilterCollapsed] = useState(true);
@@ -18,6 +19,8 @@ export function useUIState() {
   const [selectedKey, setSelectedKey] = useState("");
 
   return {
+    activeTab,
+    setActiveTab,
     isDesktopNavOpen,
     setIsDesktopNavOpen,
     isSearchCollapsed,

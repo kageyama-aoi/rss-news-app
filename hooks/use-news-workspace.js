@@ -18,7 +18,7 @@ export function useNewsWorkspace() {
   const { readMap, setReadMap, laterMap, setLaterMap, notesMap, setNotesMap, sourcePrefs, setSourcePrefs, savedViews, setSavedViews } = usePersistence();
 
   // UI 状態層
-  const { isDesktopNavOpen, setIsDesktopNavOpen, isSearchCollapsed, setIsSearchCollapsed, isFilterCollapsed, setIsFilterCollapsed, isFeedCollapsed, setIsFeedCollapsed, expandedSources, setExpandedSources, hideShorts, setHideShorts, unreadOnly, setUnreadOnly, hideMuted, setHideMuted, groupTopics, setGroupTopics, selectedKey, setSelectedKey } = useUIState();
+  const { activeTab, setActiveTab, isDesktopNavOpen, setIsDesktopNavOpen, isSearchCollapsed, setIsSearchCollapsed, isFilterCollapsed, setIsFilterCollapsed, isFeedCollapsed, setIsFeedCollapsed, expandedSources, setExpandedSources, hideShorts, setHideShorts, unreadOnly, setUnreadOnly, hideMuted, setHideMuted, groupTopics, setGroupTopics, selectedKey, setSelectedKey } = useUIState();
 
   // フィード取得層
   const { news, savedNews, loading, savedLoading, error, savedError, fetchedAt, isSavedAvailable, allSources, loadNews, loadSavedNews } = useFeedData();
@@ -168,6 +168,8 @@ export function useNewsWorkspace() {
 
   return {
     activeStatus,
+    activeTab,
+    setActiveTab,
     allSources,
     applySavedView,
     clearSearch,
