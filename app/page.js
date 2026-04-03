@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDateTime, getArticleKey } from "../lib/article-utils";
+import { withSearchBucket } from "../lib/search-utils";
 import { COPY } from "../lib/workspace-copy";
 import { useNewsWorkspace } from "../hooks/use-news-workspace";
 import { CapturePanel } from "../components/capture-panel";
@@ -498,22 +499,6 @@ function EmptyState({ message }) {
       <p>{message}</p>
     </div>
   );
-}
-
-function withSearchBucket(scope) {
-  return (article) => ({
-    ...article,
-    searchBucket:
-      scope === "feed"
-        ? "フィード"
-        : scope === "saved"
-          ? "保存済み"
-          : scope === "queue"
-            ? "後で読む"
-            : scope === "unread"
-              ? "未読"
-              : "すべて"
-  });
 }
 
 function ToolbarIcon({ name }) {

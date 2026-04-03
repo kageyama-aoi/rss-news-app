@@ -1,122 +1,35 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { buildTopicGroups, dedupeArticles, getArticleKey, isArticleVisible, groupBySource } from "../lib/article-utils";
+import { COPY } from "../lib/workspace-copy";
+import { usePersistence } from "./usePersistence";
+import { useUIState } from "./useUIState";
+import { useFeedData } from "./useFeedData";
+import { useSearch } from "./useSearch";
+import { useSave } from "./useSave";
+import { withSearchBucket } from "../lib/search-utils";
 
-import {
-  buildTopicGroups,
-  dedupeArticles,
-  getArticleKey,
-  groupBySource,
-  isArticleVisible
-} from "../lib/article-utils";
-import { COPY, STORAGE_KEYS } from "../lib/workspace-copy";
-
+/**
+ * 複合フック: 各機能別フックを統合して UI に必要な state を提供
+ */
 export function useNewsWorkspace() {
-  const [news, setNews] = useState([]);
-  const [savedNews, setSavedNews] = useState([]);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [searchScope, setSearchScope] = useState("all");
-  const [viewName, setViewName] = useState("");
-  const [manualTitle, setManualTitle] = useState("");
-  const [manualUrl, setManualUrl] = useState("");
-  const [manualSource, setManualSource] = useState("Manual Save");
-  const [loading, setLoading] = useState(false);
-  const [savedLoading, setSavedLoading] = useState(false);
-  const [manualSaveLoading, setManualSaveLoading] = useState(false);
-  const [manualSaveMessage, setManualSaveMessage] = useState("");
-  const [error, setError] = useState("");
-  const [savedError, setSavedError] = useState("");
-  const [summaryLoadingMap, setSummaryLoadingMap] = useState({});
-  const [summaryMap, setSummaryMap] = useState({});
-  const [saveLoadingMap, setSaveLoadingMap] = useState({});
-  const [saveMessageMap, setSaveMessageMap] = useState({});
-  const [fetchedAt, setFetchedAt] = useState(null);
-  const [selectedKey, setSelectedKey] = useState("");
-  const [readMap, setReadMap] = useState({});
-  const [laterMap, setLaterMap] = useState({});
-  const [notesMap, setNotesMap] = useState({});
-  const [sourcePrefs, setSourcePrefs] = useState({});
-  const [savedViews, setSavedViews] = useState([]);
-  const [hideShorts, setHideShorts] = useState(true);
-  const [unreadOnly, setUnreadOnly] = useState(false);
-  const [hideMuted, setHideMuted] = useState(true);
-  const [groupTopics, setGroupTopics] = useState(true);
-  const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
-  const [isSearchCollapsed, setIsSearchCollapsed] = useState(true);
-  const [isFeedCollapsed, setIsFeedCollapsed] = useState(true);
-  const [expandedSources, setExpandedSources] = useState({});
+  // 永続化層
+  const { readMap, setReadMap, laterMap, setLaterMap, notesMap, setNotesMap, sourcePrefs, setSourcePrefs, savedViews, setSavedViews } = usePersistence();
 
-  useEffect(() => {
-    setReadMap(readStorage(STORAGE_KEYS.readMap, {}));
-    setLaterMap(readStorage(STORAGE_KEYS.laterMap, {}));
-    setNotesMap(readStorage(STORAGE_KEYS.notesMap, {}));
-    setSourcePrefs(readStorage(STORAGE_KEYS.sourcePrefs, {}));
-    setSavedViews(readStorage(STORAGE_KEYS.savedViews, []));
-  }, []);
+  // UI 状態層
+  const { isDesktopNavOpen, setIsDesktopNavOpen, isSearchCollapsed, setIsSearchCollapsed, isFeedCollapsed, setIsFeedCollapsed, expandedSources, setExpandedSources, hideShorts, setHideShorts, unreadOnly, setUnreadOnly, hideMuted, setHideMuted, groupTopics, setGroupTopics, selectedKey, setSelectedKey } = useUIState();
 
-  useEffect(() => writeStorage(STORAGE_KEYS.readMap, readMap), [readMap]);
-  useEffect(() => writeStorage(STORAGE_KEYS.laterMap, laterMap), [laterMap]);
-  useEffect(() => writeStorage(STORAGE_KEYS.notesMap, notesMap), [notesMap]);
-  useEffect(() => writeStorage(STORAGE_KEYS.sourcePrefs, sourcePrefs), [sourcePrefs]);
-  useEffect(() => writeStorage(STORAGE_KEYS.savedViews, savedViews), [savedViews]);
+  // フィード取得層
+  const { news, savedNews, loading, savedLoading, error, savedError, fetchedAt, isSavedAvailable, allSources, loadNews, loadSavedNews, getVisibleFeed, getVisibleSaved } = useFeedData();
 
-  const loadNews = async () => {
-    setLoading(true);
-    setError("");
+  // 検索層
+  const { searchKeyword, setSearchKeyword, searchScope, setSearchScope, viewName, setViewName, clearSearch, performSearch } = useSearch();
 
-    try {
-      const response = await fetch("/api/rss", { cache: "no-store" });
+  // 保存・要約層
+  const { summaryLoadingMap, summaryMap, saveLoadingMap, saveMessageMap, manualSaveLoading, manualSaveMessage, manualTitle, setManualTitle, manualUrl, setManualUrl, manualSource, setManualSource, summarizeTitle, saveNews, saveManualNews } = useSave(loadSavedNews);
 
-      if (!response.ok) {
-        throw new Error("ニュースの取得に失敗しました。");
-      }
-
-      const data = await response.json();
-      setNews(data);
-      setFetchedAt(new Date().toISOString());
-    } catch (err) {
-      setError(err.message || "予期しないエラーが発生しました。");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSavedNews = async () => {
-    setSavedLoading(true);
-    setSavedError("");
-
-    try {
-      const response = await fetch("/api/news", { cache: "no-store" });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "保存済みニュースの取得に失敗しました。");
-      }
-
-      setSavedNews(data);
-    } catch (err) {
-      const message = err.message || "保存済みニュースを取得できませんでした。";
-      setSavedError(message);
-      setSavedNews([]);
-    } finally {
-      setSavedLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadNews();
-    loadSavedNews();
-  }, []);
-
-  const isSavedAvailable = !savedError.includes("未設定");
-  const allSources = useMemo(
-    () =>
-      [...new Set([...news, ...savedNews].map((article) => article.source || COPY.sourceFallback))].sort(
-        (left, right) => left.localeCompare(right, "ja")
-      ),
-    [news, savedNews]
-  );
-
+  // ソース設定の初期化
   useEffect(() => {
     if (allSources.length === 0) {
       return;
@@ -137,41 +50,29 @@ export function useNewsWorkspace() {
     });
   }, [allSources]);
 
-  const activeStatus =
-    loading || savedLoading || manualSaveLoading ? COPY.busy : COPY.ready;
+  const activeStatus = loading || savedLoading || manualSaveLoading ? COPY.busy : COPY.ready;
 
-  const visibleFeed = useMemo(
-    () =>
-      news
-        .filter((article) => isArticleVisible(article, sourcePrefs, hideMuted, hideShorts))
-        .filter((article) => !unreadOnly || !readMap[getArticleKey(article)]),
-    [news, sourcePrefs, hideMuted, hideShorts, unreadOnly, readMap]
-  );
+  // 可視フィード（フィルタ適用）
+  const visibleFeed = useMemo(() => getVisibleFeed(sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly), [sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly]);
 
-  const visibleSaved = useMemo(
-    () =>
-      savedNews
-        .filter((article) => isArticleVisible(article, sourcePrefs, hideMuted, hideShorts))
-        .filter((article) => !unreadOnly || !readMap[getArticleKey(article)]),
-    [savedNews, sourcePrefs, hideMuted, hideShorts, unreadOnly, readMap]
-  );
+  const visibleSaved = useMemo(() => getVisibleSaved(sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly), [sourcePrefs, hideMuted, hideShorts, readMap, unreadOnly]);
 
+  // 後で読むキュー
   const queueItems = useMemo(() => {
     const map = new Map();
-
     [...visibleFeed, ...visibleSaved].forEach((article) => {
       const key = getArticleKey(article);
-
       if (laterMap[key] && !map.has(key)) {
         map.set(key, article);
       }
     });
-
     return [...map.values()];
   }, [visibleFeed, visibleSaved, laterMap]);
 
+  // グループ化フィード
   const groupedFeed = useMemo(() => groupBySource(visibleFeed), [visibleFeed]);
 
+  // 検索結果
   const searchResults = useMemo(() => {
     const pool =
       searchScope === "feed"
@@ -181,74 +82,29 @@ export function useNewsWorkspace() {
           : searchScope === "queue"
             ? queueItems
             : searchScope === "unread"
-              ? [...visibleFeed, ...visibleSaved].filter(
-                  (article) => !readMap[getArticleKey(article)]
-                )
+              ? [...visibleFeed, ...visibleSaved].filter((article) => !readMap[getArticleKey(article)])
               : dedupeArticles([...visibleFeed, ...visibleSaved]);
 
-    const query = searchKeyword.trim().toLowerCase();
+    return performSearch(searchKeyword, searchScope, pool, readMap, notesMap);
+  }, [visibleFeed, visibleSaved, queueItems, searchScope, searchKeyword, readMap, notesMap, performSearch]);
 
-    if (!query) {
-      return searchScope === "all" ? [] : pool.map(withSearchBucket(searchScope));
-    }
+  // トピックグルーピング
+  const relatedGroups = useMemo(() => (groupTopics ? buildTopicGroups(visibleFeed) : []), [groupTopics, visibleFeed]);
 
-    return pool
-      .filter((article) => {
-        const haystack = [
-          article.title,
-          article.source,
-          article.summary,
-          notesMap[getArticleKey(article)] || ""
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return haystack.includes(query);
-      })
-      .map(withSearchBucket(searchScope));
-  }, [visibleFeed, visibleSaved, queueItems, searchScope, searchKeyword, readMap, notesMap]);
-
-  const relatedGroups = useMemo(
-    () => (groupTopics ? buildTopicGroups(visibleFeed) : []),
-    [groupTopics, visibleFeed]
-  );
-
+  // 選択中の記事
   const selectedArticle = useMemo(() => {
     if (!selectedKey) {
       return null;
     }
-
     return [...news, ...savedNews].find((article) => getArticleKey(article) === selectedKey) || null;
   }, [selectedKey, news, savedNews]);
 
   const unreadCount = visibleFeed.filter((article) => !readMap[getArticleKey(article)]).length;
   const selectedNote = selectedArticle ? notesMap[getArticleKey(selectedArticle)] || "" : "";
 
-  const clearSearch = () => {
-    setSearchKeyword("");
-    setSearchScope("all");
-  };
-
+  // ビュー管理
   const saveCurrentView = () => {
-    const trimmed = viewName.trim();
-
-    if (!trimmed) {
-      return;
-    }
-
-    setSavedViews((current) => [
-      {
-        id: `${Date.now()}`,
-        name: trimmed,
-        query: searchKeyword,
-        scope: searchScope,
-        hideShorts,
-        unreadOnly,
-        hideMuted
-      },
-      ...current
-    ]);
+    setSavedViews((current) => performSaveView(current, viewName, searchKeyword, searchScope, hideShorts, unreadOnly, hideMuted));
     setViewName("");
   };
 
@@ -264,6 +120,7 @@ export function useNewsWorkspace() {
     setSavedViews((current) => current.filter((view) => view.id !== viewId));
   };
 
+  // トグル操作
   const toggleRead = (article) => {
     const key = getArticleKey(article);
     setReadMap((current) => ({ ...current, [key]: !current[key] }));
@@ -297,105 +154,6 @@ export function useNewsWorkspace() {
         muted: !(current[source]?.muted ?? false)
       }
     }));
-  };
-
-  const summarizeTitle = async (article) => {
-    const key = getArticleKey(article);
-
-    setSummaryLoadingMap((current) => ({ ...current, [key]: true }));
-
-    try {
-      const response = await fetch("/api/summarize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: article.title })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "AI要約に失敗しました。");
-      }
-
-      setSummaryMap((current) => ({ ...current, [key]: data.summary }));
-    } catch (err) {
-      setSummaryMap((current) => ({
-        ...current,
-        [key]: `エラー: ${err.message || "要約できませんでした。"}`
-      }));
-    } finally {
-      setSummaryLoadingMap((current) => ({ ...current, [key]: false }));
-    }
-  };
-
-  const saveNews = async (article) => {
-    const key = getArticleKey(article);
-
-    setSaveLoadingMap((current) => ({ ...current, [key]: true }));
-    setSaveMessageMap((current) => ({ ...current, [key]: "" }));
-
-    try {
-      const response = await fetch("/api/news/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: article.title,
-          link: article.link,
-          source: article.source,
-          summary: summaryMap[key] || ""
-        })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "ニュース保存に失敗しました。");
-      }
-
-      setSaveMessageMap((current) => ({ ...current, [key]: data.message }));
-      loadSavedNews();
-    } catch (err) {
-      setSaveMessageMap((current) => ({
-        ...current,
-        [key]: `エラー: ${err.message || "保存できませんでした。"}`
-      }));
-    } finally {
-      setSaveLoadingMap((current) => ({ ...current, [key]: false }));
-    }
-  };
-
-  const saveManualNews = async () => {
-    setManualSaveLoading(true);
-    setManualSaveMessage("");
-
-    try {
-      if (!manualTitle.trim() || !manualUrl.trim()) {
-        throw new Error("タイトルとURLを入力してください。");
-      }
-
-      const response = await fetch("/api/news/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: manualTitle.trim(),
-          link: manualUrl.trim(),
-          source: manualSource.trim() || "Manual Save",
-          summary: ""
-        })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "手動保存に失敗しました。");
-      }
-
-      setManualSaveMessage(data.message);
-      setManualTitle("");
-      setManualUrl("");
-      loadSavedNews();
-    } catch (err) {
-      setManualSaveMessage(`エラー: ${err.message || "保存できませんでした。"}`);
-    } finally {
-      setManualSaveLoading(false);
-    }
   };
 
   return {
@@ -473,39 +231,23 @@ export function useNewsWorkspace() {
   };
 }
 
-function withSearchBucket(scope) {
-  return (article) => ({
-    ...article,
-    searchBucket:
-      scope === "feed"
-        ? "フィード"
-        : scope === "saved"
-          ? "保存済み"
-          : scope === "queue"
-            ? "後で読む"
-            : scope === "unread"
-              ? "未読"
-              : "すべて"
-  });
-}
+function performSaveView(currentViews, viewName, searchKeyword, searchScope, hideShorts, unreadOnly, hideMuted) {
+  const trimmed = viewName.trim();
 
-function readStorage(key, fallback) {
-  if (typeof window === "undefined") {
-    return fallback;
+  if (!trimmed) {
+    return currentViews;
   }
 
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeStorage(key, value) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(value));
+  return [
+    {
+      id: `${Date.now()}`,
+      name: trimmed,
+      query: searchKeyword,
+      scope: searchScope,
+      hideShorts,
+      unreadOnly,
+      hideMuted
+    },
+    ...currentViews
+  ];
 }
