@@ -3,6 +3,9 @@
 import { formatDateTime, getArticleKey } from "../lib/article-utils";
 import { COPY } from "../lib/workspace-copy";
 import { useNewsWorkspace } from "../hooks/use-news-workspace";
+import { DetailWorkspace } from "../components/detail-workspace";
+import { FeedSection } from "../components/feed-section";
+import { SearchPanel } from "../components/search-panel";
 
 export default function HomePage() {
   const {
@@ -172,109 +175,29 @@ export default function HomePage() {
           </section>
         )}
         <section className="control-layout">
-          <article className="panel glass-card" id="search">
-            <div className="panel-header">
-              <div>
-                <p className="section-kicker">Search</p>
-                <h2>{COPY.searchTitle}</h2>
-              </div>
-              <button
-                type="button"
-                className="section-toggle"
-                onClick={() => setIsSearchCollapsed((current) => !current)}
-                aria-expanded={!isSearchCollapsed}
-                aria-controls="search-panel-body"
-                title={isSearchCollapsed ? "検索欄を開く" : "検索欄を閉じる"}
-              >
-                {isSearchCollapsed ? "開く" : "閉じる"}
-              </button>
-            </div>
-            {!isSearchCollapsed ? (
-              <div id="search-panel-body">
-                <p className="panel-description">{COPY.searchHint}</p>
-                <div className="scope-row" role="tablist" aria-label="検索対象">
-                  {[
-                    ["all", "すべて"],
-                    ["feed", "フィード"],
-                    ["saved", "保存済み"],
-                    ["queue", "後で読む"],
-                    ["unread", "未読"]
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={`scope-chip ${searchScope === value ? "active" : ""}`}
-                      onClick={() => setSearchScope(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="search-bar" role="search">
-                  <label className="search-field">
-                    <SearchIcon />
-                    <input
-                      type="search"
-                      value={searchKeyword}
-                      onChange={(event) => setSearchKeyword(event.target.value)}
-                      placeholder={COPY.searchPlaceholder}
-                    />
-                  </label>
-                  <button
-                    className="button button-tertiary"
-                    onClick={clearSearch}
-                    disabled={!searchKeyword && searchScope === "all"}
-                  >
-                    {COPY.clear}
-                  </button>
-                </div>
-                <div className="saved-view-row">
-                  <label className="inline-field">
-                    <input
-                      type="text"
-                      value={viewName}
-                      onChange={(event) => setViewName(event.target.value)}
-                      placeholder="例: AIニュースだけ"
-                    />
-                  </label>
-                  <button
-                    className="button button-secondary"
-                    onClick={saveCurrentView}
-                    disabled={!viewName.trim()}
-                  >
-                    {COPY.saveView}
-                  </button>
-                </div>
-                {savedViews.length > 0 ? (
-                  <div className="saved-view-list">
-                    {savedViews.map((view) => (
-                      <div className="saved-view-chip" key={view.id}>
-                        <button type="button" onClick={() => applySavedView(view)} title={`保存ビュー: ${view.name}`}>
-                          {view.name}
-                        </button>
-                        <button type="button" onClick={() => removeSavedView(view.id)} title={`${view.name} を削除`}>
-                          削除
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                <p className="search-summary">検索結果: {searchResults.length}</p>
-                {searchKeyword.trim() || searchScope !== "all" ? (
-                  <ArticleList
-                    items={searchResults}
-                    emptyMessage={COPY.emptySearch}
-                    laterMap={laterMap}
-                    notesMap={notesMap}
-                    onSelect={setSelectedKey}
-                    readMap={readMap}
-                  />
-                ) : (
-                  <EmptyState message={COPY.idleSearch} />
-                )}
-              </div>
-            ) : null}
-          </article>
+          <SearchPanel
+            applySavedView={applySavedView}
+            ArticleList={ArticleList}
+            clearSearch={clearSearch}
+            emptyMessage={COPY.emptySearch}
+            idleMessage={<EmptyState message={COPY.idleSearch} />}
+            isCollapsed={isSearchCollapsed}
+            laterMap={laterMap}
+            notesMap={notesMap}
+            onKeywordChange={setSearchKeyword}
+            onRemoveSavedView={removeSavedView}
+            onSaveCurrentView={saveCurrentView}
+            onScopeChange={setSearchScope}
+            onSelect={setSelectedKey}
+            onToggleCollapsed={() => setIsSearchCollapsed((current) => !current)}
+            onViewNameChange={setViewName}
+            readMap={readMap}
+            savedViews={savedViews}
+            scope={searchScope}
+            searchKeyword={searchKeyword}
+            searchResults={searchResults}
+            viewName={viewName}
+          />
           <div className="side-stack">
             <article className="panel glass-card" id="filters">
               <div className="panel-header">
@@ -351,175 +274,50 @@ export default function HomePage() {
             </article>
           </div>
         </section>
-        <section className="detail-layout">
-          <article className="content-panel glass-card detail-panel">
-            <div className="content-panel-header">
-              <div>
-                <p className="section-kicker">Workspace</p>
-                <h2>{COPY.detailTitle}</h2>
-              </div>
-              <p>{COPY.detailHint}</p>
-            </div>
-            {selectedArticle ? (
-              <div className="detail-card">
-                <div className="article-meta">
-                  <span className="source-chip">{selectedArticle.source || COPY.sourceFallback}</span>
-                  <span>{formatDateTime(selectedArticle.created_at || selectedArticle.publishedAt)}</span>
-                </div>
-                <a href={selectedArticle.link} target="_blank" rel="noreferrer" className="article-link detail-link" title={selectedArticle.title}>
-                  {selectedArticle.title}
-                </a>
-                <div className="article-actions">
-                  <button className="button button-tertiary" onClick={() => toggleRead(selectedArticle)} title="既読状態を切り替え">
-                    {readMap[getArticleKey(selectedArticle)] ? COPY.markUnread : COPY.markRead}
-                  </button>
-                  <button className="button button-tertiary" onClick={() => toggleLater(selectedArticle)} title="後で読むキューに追加または解除">
-                    {laterMap[getArticleKey(selectedArticle)] ? COPY.removeLater : COPY.addLater}
-                  </button>
-                  <button
-                    className="button button-secondary"
-                    onClick={() => summarizeTitle(selectedArticle)}
-                    disabled={summaryLoadingMap[getArticleKey(selectedArticle)]}
-                    title="タイトルから要点を生成"
-                  >
-                    {summaryLoadingMap[getArticleKey(selectedArticle)] ? COPY.summarizeLoading : COPY.summarize}
-                  </button>
-                </div>
-                <p className={`article-summary ${summaryMap[getArticleKey(selectedArticle)] ? "filled" : ""}`}>
-                  {summaryMap[getArticleKey(selectedArticle)] || selectedArticle.summary || COPY.noSummary}
-                </p>
-                <label className="note-field">
-                  <span>ワークメモ</span>
-                  <textarea
-                    value={selectedNote}
-                    onChange={(event) => updateNote(selectedArticle, event.target.value)}
-                    placeholder={COPY.notePlaceholder}
-                  />
-                </label>
-              </div>
-            ) : (
-              <EmptyState message={COPY.selectPrompt} />
-            )}
-          </article>
-          <article className="content-panel glass-card topic-panel">
-            <div className="content-panel-header">
-              <div>
-                <p className="section-kicker">Topics</p>
-                <h2>{COPY.topicsTitle}</h2>
-              </div>
-              <p>{COPY.topicsHint}</p>
-            </div>
-            {relatedGroups.length === 0 ? (
-              <EmptyState message={COPY.noTopics} />
-            ) : (
-              <div className="topic-list">
-                {relatedGroups.map((group) => (
-                  <div className="topic-card" key={group.id}>
-                    <strong>{group.label}</strong>
-                    <p>{group.items.length} articles</p>
-                    <div className="topic-items">
-                      {group.items.map((article) => (
-                        <button
-                          key={getArticleKey(article)}
-                          type="button"
-                          className="topic-item"
-                          onClick={() => setSelectedKey(getArticleKey(article))}
-                          title={article.title}
-                        >
-                          <span>{article.source}</span>
-                          <span>{article.title}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </article>
-        </section>
+        <DetailWorkspace
+          EmptyState={EmptyState}
+          laterMap={laterMap}
+          notesMap={notesMap}
+          onSelectArticle={setSelectedKey}
+          onSummarize={summarizeTitle}
+          onToggleLater={toggleLater}
+          onToggleRead={toggleRead}
+          onUpdateNote={updateNote}
+          readMap={readMap}
+          relatedGroups={relatedGroups}
+          selectedArticle={selectedArticle}
+          selectedNote={selectedNote}
+          summaryLoadingMap={summaryLoadingMap}
+          summaryMap={summaryMap}
+        />
         <section className="content-stack">
-          <article className="content-panel glass-card" id="feed">
-            <div className="content-panel-header">
-              <div>
-                <p className="section-kicker">Live Feed</p>
-                <h2>{COPY.feedTitle}</h2>
-              </div>
-              <p>{COPY.feedHint}</p>
-              <button
-                type="button"
-                className="section-toggle"
-                onClick={() => setIsFeedCollapsed((current) => !current)}
-                aria-expanded={!isFeedCollapsed}
-                aria-controls="feed-panel-body"
-                title={isFeedCollapsed ? "今日のフィードを開く" : "今日のフィードを閉じる"}
-              >
-                {isFeedCollapsed ? "開く" : "閉じる"}
-              </button>
-            </div>
-            {!isFeedCollapsed ? (
-              <div id="feed-panel-body">
-                {Object.keys(groupedFeed).length === 0 ? (
-                  <EmptyState message={COPY.emptyFeed} />
-                ) : (
-                  <div className="source-stack">
-                    {Object.entries(groupedFeed).map(([source, articles]) => (
-                      <details className="source-group" key={source} open>
-                        <summary>
-                          <div>
-                            <h3>{source}</h3>
-                            <p>{articles.length} items</p>
-                          </div>
-                          <ChevronIcon />
-                        </summary>
-                        <div className="source-body">
-                          {(expandedSources[source] ? articles : articles.slice(0, 3)).map((article) => (
-                            <FeedArticleRow
-                              article={article}
-                              key={getArticleKey(article)}
-                              laterMap={laterMap}
-                              notesMap={notesMap}
-                              onSave={saveNews}
-                              onSelect={setSelectedKey}
-                              onSummarize={summarizeTitle}
-                              onToggleLater={toggleLater}
-                              onToggleRead={toggleRead}
-                              readMap={readMap}
-                              saveLoadingMap={saveLoadingMap}
-                              saveMessageMap={saveMessageMap}
-                              savedAvailable={isSavedAvailable}
-                              summaryLoadingMap={summaryLoadingMap}
-                              summaryMap={summaryMap}
-                            />
-                          ))}
-                          {articles.length > 3 ? (
-                            <button
-                              type="button"
-                              className="button button-tertiary source-expand"
-                              onClick={() =>
-                                setExpandedSources((current) => ({
-                                  ...current,
-                                  [source]: !current[source]
-                                }))
-                              }
-                              title={
-                                expandedSources[source]
-                                  ? `${source} の一覧を3件表示に戻す`
-                                  : `${source} の記事をすべて表示する`
-                              }
-                            >
-                              {expandedSources[source]
-                                ? "3件表示に戻す"
-                                : `もっと見る (${articles.length - 3}件)`}
-                            </button>
-                          ) : null}
-                        </div>
-                      </details>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </article>
+          <FeedSection
+            FeedArticleRow={FeedArticleRow}
+            groupedFeed={groupedFeed}
+            expandedSources={expandedSources}
+            isCollapsed={isFeedCollapsed}
+            laterMap={laterMap}
+            notesMap={notesMap}
+            onSelect={setSelectedKey}
+            onSave={saveNews}
+            onSummarize={summarizeTitle}
+            onToggleCollapsed={() => setIsFeedCollapsed((current) => !current)}
+            onToggleLater={toggleLater}
+            onToggleRead={toggleRead}
+            onToggleSourceExpanded={(source) =>
+              setExpandedSources((current) => ({
+                ...current,
+                [source]: !current[source]
+              }))
+            }
+            readMap={readMap}
+            renderEmpty={(message) => <EmptyState message={message} />}
+            saveLoadingMap={saveLoadingMap}
+            saveMessageMap={saveMessageMap}
+            savedAvailable={isSavedAvailable}
+            summaryLoadingMap={summaryLoadingMap}
+            summaryMap={summaryMap}
+          />
           <article className="content-panel glass-card" id="queue">
             <div className="content-panel-header">
               <div>
@@ -764,23 +562,6 @@ function withSearchBucket(scope) {
               ? "未読"
               : "すべて"
   });
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="M16 16l4 4" />
-    </svg>
-  );
-}
-
-function ChevronIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="chevron-icon">
-      <path d="M6 8l4 4 4-4" />
-    </svg>
-  );
 }
 
 function ToolbarIcon({ name }) {
