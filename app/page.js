@@ -109,6 +109,7 @@ export default function HomePage() {
   const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
   const [isSearchCollapsed, setIsSearchCollapsed] = useState(true);
   const [isFeedCollapsed, setIsFeedCollapsed] = useState(true);
+  const [expandedSources, setExpandedSources] = useState({});
 
   useEffect(() => {
     setReadMap(readStorage(STORAGE_KEYS.readMap, {}));
@@ -854,7 +855,7 @@ export default function HomePage() {
                           <ChevronIcon />
                         </summary>
                         <div className="source-body">
-                          {articles.map((article) => (
+                          {(expandedSources[source] ? articles : articles.slice(0, 3)).map((article) => (
                             <FeedArticleRow
                               article={article}
                               key={getArticleKey(article)}
@@ -873,6 +874,27 @@ export default function HomePage() {
                               summaryMap={summaryMap}
                             />
                           ))}
+                          {articles.length > 3 ? (
+                            <button
+                              type="button"
+                              className="button button-tertiary source-expand"
+                              onClick={() =>
+                                setExpandedSources((current) => ({
+                                  ...current,
+                                  [source]: !current[source]
+                                }))
+                              }
+                              title={
+                                expandedSources[source]
+                                  ? `${source} の一覧を3件表示に戻す`
+                                  : `${source} の記事をすべて表示する`
+                              }
+                            >
+                              {expandedSources[source]
+                                ? "3件表示に戻す"
+                                : `もっと見る (${articles.length - 3}件)`}
+                            </button>
+                          ) : null}
                         </div>
                       </details>
                     ))}
@@ -1196,9 +1218,7 @@ function groupBySource(items) {
       groups[source] = [];
     }
 
-    if (groups[source].length < 3) {
-      groups[source].push(article);
-    }
+    groups[source].push(article);
     return groups;
   }, {});
 }
