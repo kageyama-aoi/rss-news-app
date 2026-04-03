@@ -24,6 +24,7 @@ export default function HomePage() {
     hideMuted,
     hideShorts,
     isDesktopNavOpen,
+    isFilterCollapsed,
     isFeedCollapsed,
     isSavedAvailable,
     isSearchCollapsed,
@@ -55,6 +56,7 @@ export default function HomePage() {
     selectedArticle,
     selectedNote,
     setExpandedSources,
+    setFilterCollapsed,
     setGroupTopics,
     setHideMuted,
     setHideShorts,
@@ -177,7 +179,25 @@ export default function HomePage() {
             {savedError ? <p>{savedError}</p> : null}
           </section>
         )}
-        <section className="control-layout">
+        <div className="control-buttons">
+          <button
+            type="button"
+            className={`control-button ${!isSearchCollapsed ? "active" : ""}`}
+            onClick={() => setIsSearchCollapsed((current) => !current)}
+            title="検索を開く"
+          >
+            🔍
+          </button>
+          <button
+            type="button"
+            className={`control-button ${!isFilterCollapsed ? "active" : ""}`}
+            onClick={() => setIsFilterCollapsed((current) => !current)}
+            title="フィルターを開く"
+          >
+            ⚙️
+          </button>
+        </div>
+        <section className="control-layout-modal">
           <SearchPanel
             applySavedView={applySavedView}
             ArticleList={ArticleList}
@@ -201,13 +221,22 @@ export default function HomePage() {
             searchResults={searchResults}
             viewName={viewName}
           />
-          <div className="side-stack">
-            <article className="panel glass-card" id="filters">
+          {!isFilterCollapsed && (
+            <div className="side-stack">
+              <article className="panel glass-card" id="filters">
               <div className="panel-header">
                 <div>
                   <p className="section-kicker">Refine</p>
                   <h2>{COPY.filtersTitle}</h2>
                 </div>
+                <button
+                  type="button"
+                  className="button button-tertiary"
+                  onClick={() => setIsFilterCollapsed((current) => !current)}
+                  title="フィルターを閉じる"
+                >
+                  ✕
+                </button>
               </div>
               <p className="panel-description">{COPY.filtersHint}</p>
               <div className="toggle-grid">
@@ -257,7 +286,8 @@ export default function HomePage() {
               onManualUrlChange={setManualUrl}
               onSave={saveManualNews}
             />
-          </div>
+            </div>
+          )}
         </section>
         <DetailWorkspace
           EmptyState={EmptyState}
