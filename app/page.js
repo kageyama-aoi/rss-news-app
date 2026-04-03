@@ -246,7 +246,10 @@ export default function HomePage() {
                       type="button"
                       className="source-group-header"
                       onClick={() =>
-                        setExpandedSources((cur) => ({ ...cur, [source]: !cur[source] }))
+                        setExpandedSources((cur) => ({
+                          ...cur,
+                          [source]: cur[source] === false ? undefined : false
+                        }))
                       }
                     >
                       <span className="source-name">{source}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { dedupeArticles, getArticleKey } from "../lib/article-utils";
 import { withSearchBucket } from "../lib/search-utils";
 
@@ -51,7 +51,7 @@ export function useSearch() {
     return currentViews.filter((view) => view.id !== viewId);
   };
 
-  const performSearch = (keyword, scope, pool, readMap, notesMap) => {
+  const performSearch = useCallback((keyword, scope, pool, readMap, notesMap) => {
     const query = keyword.trim().toLowerCase();
 
     if (!query) {
@@ -73,7 +73,7 @@ export function useSearch() {
         return haystack.includes(query);
       })
       .map(withSearchBucket(scope));
-  };
+  }, []);
 
   return {
     searchKeyword,
