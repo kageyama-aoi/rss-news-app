@@ -35,9 +35,9 @@ export async function POST(request) {
 
     const response = await client.messages.create({
       model: MODEL_NAME,
-      max_tokens: 200,
+      max_tokens: 400,
       system:
-        "あなたはニュースタイトル要約アシスタントです。入力された日本語または英語のニュースタイトルを、日本語で50文字以内に短く要約してください。余計な前置きは不要です。",
+        "あなたはニュースタイトル要約アシスタントです。入力された日本語または英語のニュースタイトルを、日本語で120〜150文字の1〜2文に要約してください。120文字を下回らないよう、背景や意義を補って膨らませてください。マークダウン・記号・改行・前置きは一切不要です。要約文のみ出力してください。",
       messages: [
         {
           role: "user",
