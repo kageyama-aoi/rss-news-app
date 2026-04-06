@@ -151,7 +151,7 @@ export default function HomePage() {
         <button
           type="button"
           className={`tab-btn ${activeTab === "feed" ? "active" : ""}`}
-          onClick={() => { setActiveTab("feed"); handleClearSearch(); }}
+          onClick={() => { setActiveTab("feed"); clearSearch(); }}
         >
           フィード
           {unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>}
@@ -159,7 +159,7 @@ export default function HomePage() {
         <button
           type="button"
           className={`tab-btn ${activeTab === "queue" ? "active" : ""}`}
-          onClick={() => { setActiveTab("queue"); handleClearSearch(); }}
+          onClick={() => { setActiveTab("queue"); clearSearch(); }}
         >
           後で読む
           {queueItems.length > 0 && <span className="tab-badge">{queueItems.length}</span>}
@@ -167,7 +167,7 @@ export default function HomePage() {
         <button
           type="button"
           className={`tab-btn ${activeTab === "library" ? "active" : ""}`}
-          onClick={() => { setActiveTab("library"); handleClearSearch(); }}
+          onClick={() => { setActiveTab("library"); clearSearch(); }}
         >
           保存済み
         </button>
