@@ -2,7 +2,19 @@
 
 import { useCallback, useState } from "react";
 import { getArticleKey } from "../lib/article-utils";
-import { withSearchBucket } from "../lib/search-utils";
+
+const SCOPE_LABELS = {
+  feed: "フィード",
+  saved: "保存済み",
+  queue: "後で読む",
+  unread: "未読",
+  all: "すべて"
+};
+
+function withSearchBucket(scope) {
+  const label = SCOPE_LABELS[scope] ?? "すべて";
+  return (article) => ({ ...article, searchBucket: label });
+}
 
 /**
  * 検索キーワード・スコープの管理と記事検索を担当
