@@ -1,23 +1,19 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const MODEL_NAME = process.env.OPENAI_SUMMARY_MODEL || "gpt-5-nano";
+const MODEL_NAME = "claude-haiku-4-5-20251001";
 
 export async function POST(request) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return Response.json(
         {
-          message: "OPENAI_API_KEY が設定されていません。"
+          message: "ANTHROPIC_API_KEY が設定されていません。"
         },
         {
           status: 500
         }
       );
     }
-
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
 
     const body = await request.json();
     const title = body?.title?.trim();
@@ -33,32 +29,25 @@ export async function POST(request) {
       );
     }
 
-    const response = await client.responses.create({
+    const client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+
+    const response = await client.messages.create({
       model: MODEL_NAME,
-      input: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "input_text",
-              text: "あなたはニュースタイトル要約アシスタントです。入力された日本語または英語のニュースタイトルを、日本語で50文字以内に短く要約してください。余計な前置きは不要です。"
-            }
-          ]
-        },
+      max_tokens: 200,
+      system:
+        "あなたはニュースタイトル要約アシスタントです。入力された日本語または英語のニュースタイトルを、日本語で50文字以内に短く要約してください。余計な前置きは不要です。",
+      messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: title
-            }
-          ]
+          content: title
         }
       ]
     });
 
     return Response.json({
-      summary: response.output_text.trim()
+      summary: response.content[0].text.trim()
     });
   } catch (error) {
     return Response.json(
