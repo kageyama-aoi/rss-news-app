@@ -11,11 +11,6 @@ export function useSave(onLoadSavedNews) {
   const [summaryMap, setSummaryMap] = useState({});
   const [saveLoadingMap, setSaveLoadingMap] = useState({});
   const [saveMessageMap, setSaveMessageMap] = useState({});
-  const [manualSaveLoading, setManualSaveLoading] = useState(false);
-  const [manualSaveMessage, setManualSaveMessage] = useState("");
-  const [manualTitle, setManualTitle] = useState("");
-  const [manualUrl, setManualUrl] = useState("");
-  const [manualSource, setManualSource] = useState("Manual Save");
 
   const summarizeTitle = async (article) => {
     const key = getArticleKey(article);
@@ -80,57 +75,12 @@ export function useSave(onLoadSavedNews) {
     }
   };
 
-  const saveManualNews = async (onLoadSavedNews) => {
-    setManualSaveLoading(true);
-    setManualSaveMessage("");
-
-    try {
-      if (!manualTitle.trim() || !manualUrl.trim()) {
-        throw new Error("タイトルとURLを入力してください。");
-      }
-
-      const response = await fetch("/api/news/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: manualTitle.trim(),
-          link: manualUrl.trim(),
-          source: manualSource.trim() || "Manual Save",
-          summary: ""
-        })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "手動保存に失敗しました。");
-      }
-
-      setManualSaveMessage(data.message);
-      setManualTitle("");
-      setManualUrl("");
-      onLoadSavedNews();
-    } catch (err) {
-      setManualSaveMessage(`エラー: ${err.message || "保存できませんでした。"}`);
-    } finally {
-      setManualSaveLoading(false);
-    }
-  };
-
   return {
     summaryLoadingMap,
     summaryMap,
     saveLoadingMap,
     saveMessageMap,
-    manualSaveLoading,
-    manualSaveMessage,
-    manualTitle,
-    setManualTitle,
-    manualUrl,
-    setManualUrl,
-    manualSource,
-    setManualSource,
     summarizeTitle,
-    saveNews,
-    saveManualNews
+    saveNews
   };
 }

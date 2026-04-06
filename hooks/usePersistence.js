@@ -11,7 +11,6 @@ export function usePersistence() {
   const [laterMap, setLaterMap] = useState({});
   const [notesMap, setNotesMap] = useState({});
   const [sourcePrefs, setSourcePrefs] = useState({});
-  const [savedViews, setSavedViews] = useState([]);
 
   // 初期化時に localStorage から読み込み
   useEffect(() => {
@@ -19,7 +18,6 @@ export function usePersistence() {
     setLaterMap(readStorage(STORAGE_KEYS.laterMap, {}));
     setNotesMap(readStorage(STORAGE_KEYS.notesMap, {}));
     setSourcePrefs(readStorage(STORAGE_KEYS.sourcePrefs, {}));
-    setSavedViews(readStorage(STORAGE_KEYS.savedViews, []));
   }, []);
 
   // 変更時に localStorage に保存
@@ -27,7 +25,6 @@ export function usePersistence() {
   useEffect(() => writeStorage(STORAGE_KEYS.laterMap, laterMap), [laterMap]);
   useEffect(() => writeStorage(STORAGE_KEYS.notesMap, notesMap), [notesMap]);
   useEffect(() => writeStorage(STORAGE_KEYS.sourcePrefs, sourcePrefs), [sourcePrefs]);
-  useEffect(() => writeStorage(STORAGE_KEYS.savedViews, savedViews), [savedViews]);
 
   return {
     readMap,
@@ -37,9 +34,7 @@ export function usePersistence() {
     notesMap,
     setNotesMap,
     sourcePrefs,
-    setSourcePrefs,
-    savedViews,
-    setSavedViews
+    setSourcePrefs
   };
 }
 

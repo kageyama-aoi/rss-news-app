@@ -2,7 +2,7 @@
 
 import { formatDateTime, getArticleKey } from "../lib/article-utils";
 import { COPY } from "../lib/workspace-copy";
-import { useNewsWorkspace } from "../hooks/use-news-workspace";
+import { useNewsWorkspace } from "../hooks/useNewsWorkspace";
 
 export default function HomePage() {
   const {
