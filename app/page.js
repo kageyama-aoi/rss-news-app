@@ -274,6 +274,7 @@ export default function HomePage() {
                     onSelect={setSelectedKey}
                     onToggleRead={toggleRead}
                     onToggleLater={toggleLater}
+                    isQueue
                   />
                 ))}
               </div>
@@ -367,8 +368,10 @@ export default function HomePage() {
                 {summaryLoadingMap[getArticleKey(selectedArticle)] ? "要約中..." : "AI 要約"}
               </button>
             </div>
-            {summaryMap[getArticleKey(selectedArticle)] && (
-              <p className="drawer-summary">{summaryMap[getArticleKey(selectedArticle)]}</p>
+            {(summaryMap[getArticleKey(selectedArticle)] || selectedArticle.summary) && (
+              <p className="drawer-summary">
+                {summaryMap[getArticleKey(selectedArticle)] || selectedArticle.summary}
+              </p>
             )}
             {saveMessageMap[getArticleKey(selectedArticle)] && (
               <p className="drawer-save-msg">{saveMessageMap[getArticleKey(selectedArticle)]}</p>
@@ -380,7 +383,7 @@ export default function HomePage() {
                 value={selectedNote}
                 onChange={(e) => updateNote(selectedArticle, e.target.value)}
                 placeholder="メモを書く..."
-                rows={3}
+                rows={6}
               />
             </label>
           </aside>
@@ -391,7 +394,7 @@ export default function HomePage() {
 }
 
 /* ── 記事行（コンパクト） ── */
-function ArticleRow({ article, readMap, laterMap, notesMap, onSelect, onToggleRead, onToggleLater }) {
+function ArticleRow({ article, readMap, laterMap, notesMap, onSelect, onToggleRead, onToggleLater, isQueue }) {
   const key = getArticleKey(article);
   const isRead = !!readMap[key];
   const isLater = !!laterMap[key];
@@ -408,14 +411,25 @@ function ArticleRow({ article, readMap, laterMap, notesMap, onSelect, onToggleRe
         </span>
       </button>
       <div className="article-row-actions">
-        <button
-          type="button"
-          className={`row-action-btn ${isLater ? "active" : ""}`}
-          onClick={(e) => { e.stopPropagation(); onToggleLater(article); }}
-          title={isLater ? "後で読むから外す" : "後で読む"}
-        >
-          ★
-        </button>
+        {isQueue ? (
+          <button
+            type="button"
+            className="row-action-btn row-action-btn--remove"
+            onClick={(e) => { e.stopPropagation(); onToggleLater(article); }}
+            title="後で読むから外す"
+          >
+            解除
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`row-action-btn ${isLater ? "active" : ""}`}
+            onClick={(e) => { e.stopPropagation(); onToggleLater(article); }}
+            title={isLater ? "後で読むから外す" : "後で読む"}
+          >
+            ★
+          </button>
+        )}
         <button
           type="button"
           className={`row-action-btn ${isRead ? "active" : ""}`}

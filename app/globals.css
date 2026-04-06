@@ -476,6 +476,8 @@ a { color: inherit; }
 
 .row-action-btn:hover { background: rgba(0,0,0,0.07); color: var(--text-primary); }
 .row-action-btn.active { color: var(--accent); }
+.row-action-btn--remove { width: auto; padding: 0 10px; font-size: 0.75rem; color: var(--text-secondary); border: 1px solid var(--border); }
+.row-action-btn--remove:hover { background: rgba(220,50,50,0.08); color: #c0392b; border-color: #c0392b; }
 
 .load-more {
   width: 100%;
