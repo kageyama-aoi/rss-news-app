@@ -8,6 +8,7 @@ export async function GET() {
       status: 200
     });
   } catch (error) {
+    console.error(`[api/rss] ERROR message="${error.message}" stack="${error.stack}"`);
     return Response.json(
       {
         message: "RSS の取得に失敗しました。",
